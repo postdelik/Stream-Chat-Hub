@@ -1,14 +1,15 @@
+import type { Dispatch, SetStateAction } from "react";
 import type {
   ChatSource,
   SafeTwitchAuthState,
   TwitchConnectionStatus,
   YouTubeConnectionStatus,
 } from "../../shared/types";
+import { getSourcePlatformLabel } from "../utils/chat";
 import {
   CollapsibleSection,
   MiniCollapsibleSection,
 } from "./common/CollapsibleSection";
-import { getSourcePlatformLabel } from "../utils/chat";
 
 export type AddSourceTab = "anonymousTwitch" | "twitchLogin" | "youtube";
 
@@ -21,68 +22,82 @@ type SourcesSectionProps = {
   connectedYoutubeSourcesCount: number;
 
   sources: ChatSource[];
+
   twitchStatus: TwitchConnectionStatus;
   twitchAuthStatus: SafeTwitchAuthState;
   youtubeStatus: YouTubeConnectionStatus;
 
   activeAddSourceTab: AddSourceTab;
-  setActiveAddSourceTab: (tab: AddSourceTab) => void;
+  setActiveAddSourceTab: Dispatch<SetStateAction<AddSourceTab>>;
 
   anonymousTwitchChannelName: string;
-  setAnonymousTwitchChannelName: (value: string) => void;
+  setAnonymousTwitchChannelName: Dispatch<SetStateAction<string>>;
 
   authTwitchChannelName: string;
-  setAuthTwitchChannelName: (value: string) => void;
+  setAuthTwitchChannelName: Dispatch<SetStateAction<string>>;
 
   youtubeInput: string;
-  setYoutubeInput: (value: string) => void;
+  setYoutubeInput: Dispatch<SetStateAction<string>>;
 
   youtubeApiKey: string;
-  setYoutubeApiKey: (value: string) => void;
+  setYoutubeApiKey: Dispatch<SetStateAction<string>>;
 
   chatActionStatus: string;
 
   toggleSource: (sourceId: string) => void;
   removeSource: (sourceId: string) => void;
+
   addAnonymousTwitchSource: () => void;
   addAuthTwitchSource: () => void;
   addYouTubeSource: () => void;
+
   startTwitchLogin: () => void;
   logoutTwitch: () => void;
-  connectChat: () => void;
-  disconnectChat: () => void;
+
+  connectChat?: () => void;
+  disconnectChat?: () => void;
 };
 
 export function SourcesSection({
   t,
+
   enabledSourcesCount,
   twitchSourcesCount,
   youtubeSourcesCount,
   connectedYoutubeSourcesCount,
+
   sources,
+
   twitchStatus,
   twitchAuthStatus,
   youtubeStatus,
+
   activeAddSourceTab,
   setActiveAddSourceTab,
+
   anonymousTwitchChannelName,
   setAnonymousTwitchChannelName,
+
   authTwitchChannelName,
   setAuthTwitchChannelName,
+
   youtubeInput,
   setYoutubeInput,
+
   youtubeApiKey,
   setYoutubeApiKey,
+
   chatActionStatus,
+
   toggleSource,
   removeSource,
+
   addAnonymousTwitchSource,
   addAuthTwitchSource,
   addYouTubeSource,
+
   startTwitchLogin,
   logoutTwitch,
-  connectChat,
-  disconnectChat,
 }: SourcesSectionProps) {
   return (
     <CollapsibleSection
@@ -97,29 +112,33 @@ export function SourcesSection({
         <p>🔴 YouTube: {youtubeSourcesCount}</p>
 
         <p>
-          {t("twitchConnection")}: {" "}
+          {t("twitchConnection")}:{" "}
           {twitchStatus.connected
             ? `${t("connectedToChannels")} ${twitchStatus.channelNames.length}`
             : t("notConnected")}
         </p>
 
         <p>
-          {t("twitchLogin")}: {" "}
+          {t("twitchLogin")}:{" "}
           {twitchAuthStatus.enabled && twitchAuthStatus.username
             ? `${t("loggedInAs")} ${twitchAuthStatus.username}`
             : t("notLoggedIn")}
         </p>
 
-        {twitchStatus.error && <p className="errorText">{twitchStatus.error}</p>}
+        {twitchStatus.error && (
+          <p className="errorText">{twitchStatus.error}</p>
+        )}
 
         <p>
-          {t("youtubeConnection")}: {" "}
+          {t("youtubeConnection")}:{" "}
           {youtubeStatus.connected
             ? `${t("connectedSources")}: ${connectedYoutubeSourcesCount}`
             : t("notConnected")}
         </p>
 
-        {youtubeStatus.error && <p className="errorText">{youtubeStatus.error}</p>}
+        {youtubeStatus.error && (
+          <p className="errorText">{youtubeStatus.error}</p>
+        )}
       </div>
 
       <div className="sourceList">
@@ -176,7 +195,9 @@ export function SourcesSection({
 
         <button
           className={
-            activeAddSourceTab === "twitchLogin" ? "tabButton active" : "tabButton"
+            activeAddSourceTab === "twitchLogin"
+              ? "tabButton active"
+              : "tabButton"
           }
           type="button"
           onClick={() => setActiveAddSourceTab("twitchLogin")}
@@ -209,7 +230,9 @@ export function SourcesSection({
                 type="text"
                 placeholder={t("twitchChannelPlaceholder")}
                 value={anonymousTwitchChannelName}
-                onChange={(event) => setAnonymousTwitchChannelName(event.target.value)}
+                onChange={(event) =>
+                  setAnonymousTwitchChannelName(event.target.value)
+                }
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     addAnonymousTwitchSource();
@@ -218,7 +241,11 @@ export function SourcesSection({
               />
             </label>
 
-            <button className="button" type="button" onClick={addAnonymousTwitchSource}>
+            <button
+              className="button"
+              type="button"
+              onClick={addAnonymousTwitchSource}
+            >
               {t("addTwitchChannel")}
             </button>
           </MiniCollapsibleSection>
@@ -252,7 +279,11 @@ export function SourcesSection({
                   {t("logoutTwitch")}
                 </button>
               ) : (
-                <button className="button" type="button" onClick={startTwitchLogin}>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={startTwitchLogin}
+                >
                   {t("loginWithTwitch")}
                 </button>
               )}
@@ -266,7 +297,9 @@ export function SourcesSection({
                 type="text"
                 placeholder={t("twitchChannelPlaceholder")}
                 value={authTwitchChannelName}
-                onChange={(event) => setAuthTwitchChannelName(event.target.value)}
+                onChange={(event) =>
+                  setAuthTwitchChannelName(event.target.value)
+                }
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     addAuthTwitchSource();
@@ -275,7 +308,11 @@ export function SourcesSection({
               />
             </label>
 
-            <button className="button" type="button" onClick={addAuthTwitchSource}>
+            <button
+              className="button"
+              type="button"
+              onClick={addAuthTwitchSource}
+            >
               {t("addChannelViaLogin")}
             </button>
 
@@ -314,22 +351,16 @@ export function SourcesSection({
               />
             </label>
 
-            <button className="button secondaryButton" type="button" onClick={addYouTubeSource}>
+            <button
+              className="button secondaryButton"
+              type="button"
+              onClick={addYouTubeSource}
+            >
               {t("youtubeDisabled")}
             </button>
           </MiniCollapsibleSection>
         </div>
       )}
-
-      <div className="buttonRow">
-        <button className="button" type="button" onClick={connectChat}>
-          {t("connectSources")}
-        </button>
-
-        <button className="button secondaryButton" type="button" onClick={disconnectChat}>
-          {t("disconnectSources")}
-        </button>
-      </div>
 
       {chatActionStatus && <p className="copyStatus">{chatActionStatus}</p>}
     </CollapsibleSection>

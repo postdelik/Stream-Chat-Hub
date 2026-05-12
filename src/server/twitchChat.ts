@@ -178,36 +178,32 @@ export class TwitchChatClient {
       });
 
       client.on(
-        "message",
-        (
-          channel: string,
-          userstate: TwitchUserState,
-          messageText: string,
-          self: boolean
-        ) => {
-          if (self) {
-            return;
-          }
+  "message",
+  (
+    channel: string,
+    userstate: TwitchUserState,
+    messageText: string,
+    self: boolean
+  ) => {
+    const channelName = normalizeChannelName(channel);
 
-          const channelName = normalizeChannelName(channel);
+    const authorName =
+      userstate["display-name"] || userstate.username || "unknown";
 
-          const authorName =
-            userstate["display-name"] || userstate.username || "unknown";
+    console.log(
+      `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`
+    );
 
-          console.log(
-            `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`
-          );
-
-          this.onMessage({
-            id: userstate.id || createMessageId(),
-            platform: "twitch",
-            channelName,
-            authorName,
-            text: messageText,
-            timestamp: Date.now(),
-          });
-        }
-      );
+    this.onMessage({
+      id: userstate.id || createMessageId(),
+      platform: "twitch",
+      channelName,
+      authorName,
+      text: messageText,
+      timestamp: Date.now(),
+    });
+  }
+);
 
       await client.connect();
 

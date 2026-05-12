@@ -16,7 +16,7 @@ export function AboutSection({
     <CollapsibleSection title={t("aboutTitle")} badge="v0.1.5">
       <div className="aboutBox">
         <p>
-          <strong>Stream Chat Hub</strong> beta v0.1.5
+          <strong>Stream Chat Hub</strong> beta v0.2
         </p>
 
         <p className="hint">{t("aboutText")}</p>

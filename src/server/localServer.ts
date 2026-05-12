@@ -740,61 +740,109 @@ export async function startLocalServer() {
   });
 
   server.post("/twitch/auth/token", async (request, reply) => {
-    try {
-      const body = request.body as {
-        accessToken?: string;
-        scopes?: string[];
-      };
+  try {
+    console.log("[TWITCH AUTH TOKEN] Получен запрос сохранения токена");
 
-      const accessToken =
-        typeof body.accessToken === "string" ? body.accessToken.trim() : "";
+    const body = request.body as {
+      accessToken?: string;
+      scopes?: string[];
+    };
 
-      if (!accessToken) {
-        reply.code(400).send({
-          ok: false,
-          error: "Access token пустой",
-        });
+    const accessToken =
+      typeof body.accessToken === "string" ? body.accessToken.trim() : "";
 
-        return;
-      }
-
-      const tokenInfo = await validateTwitchToken(accessToken);
-
-      if (tokenInfo.client_id !== TWITCH_CLIENT_ID) {
-        reply.code(400).send({
-          ok: false,
-          error: "Token выдан для другого Twitch Client ID",
-        });
-
-        return;
-      }
-
-      const scopes = Array.isArray(tokenInfo.scopes)
-        ? tokenInfo.scopes
-        : body.scopes || [];
-      const expiresAt = Date.now() + tokenInfo.expires_in * 1000;
-
-      appSettings.twitchAuth = {
-        enabled: true,
-        username: tokenInfo.login,
-        accessToken,
-        scopes,
-        expiresAt,
-      };
-
-      saveSettings(appSettings);
-
-      reply.send({
-        ok: true,
-        auth: getSafeTwitchAuthState(),
-      });
-    } catch {
+    if (!accessToken) {
       reply.code(400).send({
         ok: false,
-        error: "Не удалось проверить Twitch token",
+        error: "Access token пустой",
       });
+
+      return;
     }
-  });
+
+    const tokenInfo = await validateTwitchToken(accessToken);
+
+    console.log("[TWITCH AUTH TOKEN] Token info:", {
+      client_id: tokenInfo.client_id,
+      login: tokenInfo.login,
+      scopes: tokenInfo.scopes,
+      expires_in: tokenInfo.expires_in,
+    });
+
+    if (tokenInfo.client_id !== TWITCH_CLIENT_ID) {
+      reply.code(400).send({
+        ok: false,
+        error: "Token выдан для другого Twitch Client ID",
+      });
+
+      return;
+    }
+
+    const scopes = Array.isArray(tokenInfo.scopes)
+      ? tokenInfo.scopes
+      : body.scopes || [];
+
+    const expiresAt = Date.now() + tokenInfo.expires_in * 1000;
+
+    appSettings.twitchAuth = {
+      enabled: true,
+      username: tokenInfo.login,
+      accessToken,
+      scopes,
+      expiresAt,
+    };
+const ownChannelName = normalizeTwitchChannelName(tokenInfo.login);
+
+const hasOwnTwitchSource = appSettings.sources.some(
+  (source) =>
+    source.platform === "twitch" &&
+    source.channelName === ownChannelName
+);
+
+if (!hasOwnTwitchSource) {
+  appSettings.sources = [
+    ...appSettings.sources,
+    {
+      id: createMessageId(),
+      platform: "twitch",
+      channelName: ownChannelName,
+      enabled: true,
+    },
+  ];
+
+  console.log("[TWITCH AUTH TOKEN] Auto added own channel:", ownChannelName);
+}
+    saveSettings(appSettings);
+
+    const twitchChannelNames = getEnabledTwitchChannelNames(appSettings.sources);
+
+    console.log("[TWITCH AUTH TOKEN] Enabled Twitch channels:", twitchChannelNames);
+
+    let twitchStatus = twitchChatClient.getStatus();
+
+    if (twitchChannelNames.length > 0) {
+      console.log("[TWITCH AUTH TOKEN] Auto reconnect after login");
+
+      twitchStatus = await twitchChatClient.connect(
+        twitchChannelNames,
+        appSettings.twitchAuth
+      );
+    }
+
+    reply.send({
+      ok: true,
+      auth: getSafeTwitchAuthState(),
+      twitchStatus,
+    });
+  } catch (error) {
+    console.error("[TWITCH AUTH TOKEN ERROR]", error);
+
+    reply.code(400).send({
+      ok: false,
+      error: "Не удалось проверить Twitch token",
+    });
+  }
+});
 
   server.post("/twitch/auth/logout", async () => {
     appSettings.twitchAuth = {

@@ -17,3 +17,10 @@ Thumbs.db
 .idea/
 
 *.tsbuildinfo
+.env
+*.log
+release/
+dist/
+build/
+.stream-chat-hub/
+settings.json

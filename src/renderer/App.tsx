@@ -387,12 +387,41 @@ export function App() {
   }
 
   function addAuthTwitchSource() {
-    const added = addSource("twitch", authTwitchChannelName);
+    console.log("[APP] addAuthTwitchSource clicked");
+  const channelName = normalizeSourceInput("twitch", authTwitchChannelName);
 
-    if (added) {
-      setAuthTwitchChannelName("");
-    }
+  if (!channelName) {
+    setChatActionStatus(t("enterChannel"));
+    return;
   }
+
+  const alreadyExists = sources.some(
+    (source) =>
+      source.platform === "twitch" && source.channelName === channelName
+  );
+
+  if (alreadyExists) {
+    setAuthTwitchChannelName("");
+    setChatActionStatus(`Канал уже добавлен, переподключаю Twitch: #${channelName}`);
+    void connectChatWithSources(sources);
+    return;
+  }
+
+  const nextSource: ChatSource = {
+    id: createSourceId(),
+    platform: "twitch",
+    channelName,
+    enabled: true,
+  };
+
+  const nextSources = [...sources, nextSource];
+  console.log("[APP] nextSources", nextSources);
+  setSources(nextSources);
+  setAuthTwitchChannelName("");
+  setChatActionStatus(`Источник добавлен, подключаю Twitch: #${channelName}`);
+
+  void connectChatWithSources(nextSources);
+}
 
   function addYouTubeSource() {
     setChatActionStatus(t("youtubeSkipped"));
