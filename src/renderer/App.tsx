@@ -1838,10 +1838,10 @@ export function App() {
           <p className="hint">{t("testOverlayHint2")}</p>
         </CollapsibleSection>
 
-        <CollapsibleSection title={t("aboutTitle")} badge="v0.1.2">
+        <CollapsibleSection title={t("aboutTitle")} badge="v0.1.4">
           <div className="aboutBox">
             <p>
-              <strong>Stream Chat Hub</strong> beta v0.1.2
+              <strong>Stream Chat Hub</strong> beta v0.1.4
             </p>
 
             <p className="hint">{t("aboutText")}</p>
