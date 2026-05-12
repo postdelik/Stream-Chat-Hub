@@ -13,10 +13,10 @@ export function AboutSection({
   chooseLanguage,
 }: AboutSectionProps) {
   return (
-    <CollapsibleSection title={t("aboutTitle")} badge="v0.1.3">
+    <CollapsibleSection title={t("aboutTitle")} badge="v0.1.5">
       <div className="aboutBox">
         <p>
-          <strong>Stream Chat Hub</strong> beta v0.1.3
+          <strong>Stream Chat Hub</strong> beta v0.1.5
         </p>
 
         <p className="hint">{t("aboutText")}</p>

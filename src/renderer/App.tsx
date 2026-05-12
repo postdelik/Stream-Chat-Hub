@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   AppSettings,
   ChatMessage,
@@ -9,348 +9,25 @@ import type {
   TwitchConnectionStatus,
   YouTubeConnectionStatus,
 } from "../shared/types";
-
-type AppLanguage = "ru" | "en";
-
-type CollapsibleSectionProps = {
-  title: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-  badge?: string;
-};
+import { languageStorageKey, overlayUrl } from "./constants";
+import { translations, type AppLanguage } from "./i18n/translations";
+import {
+  createSourceId,
+  getSourcePlatformLabel,
+  normalizeSourceInput,
+  normalizeYouTubeInput,
+} from "./utils/chat";
+import { clampNumber } from "./utils/numbers";
+import { AboutSection } from "./components/AboutSection";
+import { ChatView } from "./components/ChatView";
+import { OverlaySettingsSection } from "./components/OverlaySettingsSection";
+import { OverlayAppearanceSection } from "./components/OverlayAppearanceSection";
+import { MessageFiltersSection } from "./components/MessageFiltersSection";
+import { ObsLinkSection } from "./components/ObsLinkSection";
+import { SourcesSection, type AddSourceTab } from "./components/SourcesSection";
+import { TestOverlaySection } from "./components/TestOverlaySection";
 
 type OverlayPreset = "compact" | "standard" | "large" | "textOnly";
-type AddSourceTab = "anonymousTwitch" | "twitchLogin" | "youtube";
-
-const languageStorageKey = "stream-chat-hub-language";
-
-const translations: Record<AppLanguage, Record<string, string>> = {
-  ru: {
-    chooseLanguageTitle: "Выберите язык",
-    chooseLanguageSubtitle:
-      "Язык можно будет поменять позже в разделе «О проекте и контакты».",
-    russian: "Русский",
-    english: "English",
-
-    appTitle: "Stream Chat Hub",
-
-    sourcesTitle: "Источники чата",
-    activeShort: "активн.",
-    activeSources: "Активных источников",
-    twitchConnection: "Twitch-соединение",
-    connectedToChannels: "подключено к каналам",
-    notConnected: "не подключено",
-    twitchLogin: "Twitch Login",
-    loggedInAs: "выполнен как",
-    notLoggedIn: "не выполнен",
-    youtubeConnection: "YouTube-соединение",
-    connectedSources: "подключено источников",
-    noSources: "Источники ещё не добавлены",
-    sourceEnabled: "Источник включён",
-    sourceDisabled: "Источник выключен",
-    removeSource: "Удалить источник",
-
-    anonymousTab: "Без входа",
-    twitchLoginTab: "Twitch Login",
-    youtubeLaterTab: "YouTube позже",
-
-    publicTwitchRead: "Публичное чтение Twitch-чата",
-    publicTwitchReadHint:
-      "Вход не нужен. Подходит для простого чтения открытых Twitch-каналов.",
-    twitchChannel: "Twitch-канал",
-    twitchChannelPlaceholder: "Например: shroud",
-    addTwitchChannel: "Добавить Twitch-канал",
-
-    twitchAccountWork: "Работа через Twitch-аккаунт",
-    twitchAccountWorkHint:
-      "Пользователь входит через Twitch. Потом подключение к чату идёт с его user access token.",
-    status: "Статус",
-    loginDone: "Выполнен вход",
-    loginNotDone: "Не выполнен вход",
-    logoutTwitch: "Выйти из Twitch",
-    loginWithTwitch: "Войти через Twitch",
-    twitchChannelForReading: "Twitch-канал для чтения",
-    addChannelViaLogin: "Добавить канал через Twitch Login",
-    reconnectAfterLogin:
-      "После входа нажми «Подключить источники», чтобы переподключить Twitch уже с авторизацией.",
-
-    youtubeWillBeLater: "YouTube будет позже",
-    youtubeWillBeLaterHint:
-      "Вкладка уже есть, чтобы интерфейс был готов к двум платформам.",
-    youtubeLinkOrVideoId: "YouTube-ссылка или video id",
-    youtubeDisabledPlaceholder: "Пока пропускаем YouTube",
-    youtubeApiKey: "YouTube API key",
-    youtubeApiKeyPlaceholder: "Пока не используем",
-    youtubeDisabled: "YouTube пока отключён",
-
-    connectSources: "Подключить источники",
-    disconnectSources: "Отключить Twitch/YouTube",
-
-    obsOverlay: "OBS Overlay",
-    quickPresetsHint:
-      "Быстрые пресеты. После выбора можно вручную докрутить любые поля.",
-    compact: "Компактный",
-    standard: "Стандартный",
-    large: "Большой",
-    textOnly: "Только текст",
-    obsWidth: "Ширина OBS",
-    obsHeight: "Высота OBS",
-    fontSize: "Размер шрифта",
-    chatBlockWidth: "Ширина блока чата",
-    messagesOnScreen: "Сообщений на экране",
-    position: "Позиция",
-    leftBottom: "Слева снизу",
-    centerBottom: "По центру снизу",
-    rightBottom: "Справа снизу",
-
-    messageAppearance: "Внешний вид сообщений",
-    showPlatformIcon: "Показывать иконку платформы",
-    showAuthorName: "Показывать имя автора",
-    showChannelName: "Показывать канал",
-    backgroundOpacity: "Прозрачность фона",
-    borderRadius: "Скругление",
-    messageGap: "Расстояние",
-
-    messageFilters: "Фильтры сообщений",
-    hideCommands: "Скрывать команды, которые начинаются с !",
-    hideLinks: "Скрывать сообщения со ссылками",
-    onlyWords: "Показывать только сообщения со словами",
-    onlyWordsPlaceholder: "Например: розыгрыш, вопрос, help",
-    highlightWords: "Подсвечивать слова",
-    highlightWordsPlaceholder: "Например: важно, донат, вопрос",
-    filtersHint:
-      "Слова разделяй запятыми. Фильтры применяются только к OBS overlay, общий чат в приложении остаётся полным.",
-
-    obsLinkTitle: "Ссылка для OBS",
-    copyLink: "Скопировать ссылку",
-    settingsFile: "Файл настроек",
-    obsLinkHint:
-      "В OBS вставь короткую ссылку выше. Width и Height в OBS укажи такими же, как в полях приложения.",
-
-    testOverlay: "Тест overlay",
-    enabled: "включён",
-    disabled: "выключен",
-    enableTestOverlay: "Включить тест overlay",
-    testOverlayHint:
-      "Добавляет тестовые сообщения в общий поток. Можно проверять OBS, фильтры, размеры и внешний вид даже без реального чата.",
-    testOverlayHint2:
-      "Эта галочка не отключает Twitch. Тестовые сообщения просто идут рядом с настоящими.",
-
-    aboutTitle: "О проекте и контакты",
-    aboutText: "Приложение для объединения чатов стрима и вывода overlay в OBS.",
-    projectGithub: "GitHub проекта",
-    supportProject: "Поддержать проект",
-    language: "Язык",
-    changeLanguageHint:
-      "Выбор языка сохраняется на этом компьютере и применится при следующем запуске.",
-
-    commonChat: "Общий чат",
-    messages: "сообщений",
-    clear: "Очистить",
-
-    copied: "Ссылка скопирована",
-    copyFailed: "Не удалось скопировать",
-    loadingSettings: "Загружаю настройки...",
-    settingsLoaded: "Настройки загружены",
-    settingsLoadFailed: "Не удалось загрузить настройки",
-    savingSettings: "Сохраняю настройки...",
-    settingsSaved: "Настройки сохранены",
-    settingsSaveFailed: "Не удалось сохранить настройки",
-
-    openTwitchLogin: "Открываю Twitch Login...",
-    twitchLoginDone: "Twitch Login выполнен",
-    twitchLogoutDone: "Twitch Login отключён",
-    twitchLogoutFailed: "Не удалось выйти из Twitch",
-
-    presetCompact: "Пресет overlay: Компактный",
-    presetStandard: "Пресет overlay: Стандартный",
-    presetLarge: "Пресет overlay: Большой",
-    presetTextOnly: "Пресет overlay: Только текст",
-
-    enterChannel: "Введите канал",
-    sourceAlreadyAdded: "Такой источник уже добавлен",
-    sourceAdded: "Источник добавлен",
-    youtubeSkipped: "YouTube пока пропускаем, вкладка подготовлена на потом",
-
-    testOverlayEnabled: "Тест overlay включён, тестовые сообщения летят в чат",
-    testOverlayDisabled: "Тест overlay выключен",
-    testOverlaySwitchFailed: "Не удалось переключить тест overlay",
-
-    connectingSources: "Подключаю источники чата...",
-    activeSourcesStatus: "Активные источники",
-    noActiveSources: "Нет активных источников для подключения",
-    connectSourcesFailed: "Ошибка подключения источников",
-    disconnectingSources: "Отключаю Twitch и YouTube...",
-    sourcesDisconnected: "Источники отключены",
-    sourcesDisconnectedTestKeepsRunning:
-      "Twitch и YouTube отключены, тест overlay продолжает работать",
-    disconnectSourcesFailed: "Не удалось отключить источники",
-    testOverlayPart: "Тест overlay",
-  },
-
-  en: {
-    chooseLanguageTitle: "Choose language",
-    chooseLanguageSubtitle:
-      "You can change the language later in the “About and contacts” section.",
-    russian: "Русский",
-    english: "English",
-
-    appTitle: "Stream Chat Hub",
-
-    sourcesTitle: "Chat sources",
-    activeShort: "active",
-    activeSources: "Active sources",
-    twitchConnection: "Twitch connection",
-    connectedToChannels: "connected to channels",
-    notConnected: "not connected",
-    twitchLogin: "Twitch Login",
-    loggedInAs: "logged in as",
-    notLoggedIn: "not logged in",
-    youtubeConnection: "YouTube connection",
-    connectedSources: "connected sources",
-    noSources: "No sources added yet",
-    sourceEnabled: "Source enabled",
-    sourceDisabled: "Source disabled",
-    removeSource: "Remove source",
-
-    anonymousTab: "No login",
-    twitchLoginTab: "Twitch Login",
-    youtubeLaterTab: "YouTube later",
-
-    publicTwitchRead: "Public Twitch chat reading",
-    publicTwitchReadHint:
-      "No login required. Good for reading public Twitch channels.",
-    twitchChannel: "Twitch channel",
-    twitchChannelPlaceholder: "Example: shroud",
-    addTwitchChannel: "Add Twitch channel",
-
-    twitchAccountWork: "Work through a Twitch account",
-    twitchAccountWorkHint:
-      "The user logs in through Twitch. Chat connection then uses their user access token.",
-    status: "Status",
-    loginDone: "Logged in",
-    loginNotDone: "Not logged in",
-    logoutTwitch: "Log out of Twitch",
-    loginWithTwitch: "Log in with Twitch",
-    twitchChannelForReading: "Twitch channel to read",
-    addChannelViaLogin: "Add channel through Twitch Login",
-    reconnectAfterLogin:
-      "After logging in, click “Connect sources” to reconnect Twitch with authorization.",
-
-    youtubeWillBeLater: "YouTube will be added later",
-    youtubeWillBeLaterHint:
-      "The tab is already here so the interface is ready for two platforms.",
-    youtubeLinkOrVideoId: "YouTube link or video id",
-    youtubeDisabledPlaceholder: "YouTube is skipped for now",
-    youtubeApiKey: "YouTube API key",
-    youtubeApiKeyPlaceholder: "Not used yet",
-    youtubeDisabled: "YouTube is disabled for now",
-
-    connectSources: "Connect sources",
-    disconnectSources: "Disconnect Twitch/YouTube",
-
-    obsOverlay: "OBS Overlay",
-    quickPresetsHint:
-      "Quick presets. After choosing one, you can manually adjust any field.",
-    compact: "Compact",
-    standard: "Standard",
-    large: "Large",
-    textOnly: "Text only",
-    obsWidth: "OBS width",
-    obsHeight: "OBS height",
-    fontSize: "Font size",
-    chatBlockWidth: "Chat block width",
-    messagesOnScreen: "Messages on screen",
-    position: "Position",
-    leftBottom: "Bottom left",
-    centerBottom: "Bottom center",
-    rightBottom: "Bottom right",
-
-    messageAppearance: "Message appearance",
-    showPlatformIcon: "Show platform icon",
-    showAuthorName: "Show author name",
-    showChannelName: "Show channel",
-    backgroundOpacity: "Background opacity",
-    borderRadius: "Border radius",
-    messageGap: "Spacing",
-
-    messageFilters: "Message filters",
-    hideCommands: "Hide commands starting with !",
-    hideLinks: "Hide messages with links",
-    onlyWords: "Show only messages with words",
-    onlyWordsPlaceholder: "Example: giveaway, question, help",
-    highlightWords: "Highlight words",
-    highlightWordsPlaceholder: "Example: important, donate, question",
-    filtersHint:
-      "Separate words with commas. Filters are applied only to the OBS overlay, the in-app chat remains complete.",
-
-    obsLinkTitle: "OBS link",
-    copyLink: "Copy link",
-    settingsFile: "Settings file",
-    obsLinkHint:
-      "Paste the short link above into OBS. Set Width and Height in OBS to match the app fields.",
-
-    testOverlay: "Test overlay",
-    enabled: "enabled",
-    disabled: "disabled",
-    enableTestOverlay: "Enable test overlay",
-    testOverlayHint:
-      "Adds test messages to the shared stream. You can test OBS, filters, sizes, and appearance without real chat.",
-    testOverlayHint2:
-      "This checkbox does not disconnect Twitch. Test messages simply appear alongside real ones.",
-
-    aboutTitle: "About and contacts",
-    aboutText: "An app for combining stream chats and displaying an OBS overlay.",
-    projectGithub: "Project GitHub",
-    supportProject: "Support the project",
-    language: "Language",
-    changeLanguageHint:
-      "The selected language is saved on this computer and will be used on the next launch.",
-
-    commonChat: "Common chat",
-    messages: "messages",
-    clear: "Clear",
-
-    copied: "Link copied",
-    copyFailed: "Failed to copy",
-    loadingSettings: "Loading settings...",
-    settingsLoaded: "Settings loaded",
-    settingsLoadFailed: "Failed to load settings",
-    savingSettings: "Saving settings...",
-    settingsSaved: "Settings saved",
-    settingsSaveFailed: "Failed to save settings",
-
-    openTwitchLogin: "Opening Twitch Login...",
-    twitchLoginDone: "Twitch Login completed",
-    twitchLogoutDone: "Twitch Login disconnected",
-    twitchLogoutFailed: "Failed to log out of Twitch",
-
-    presetCompact: "Overlay preset: Compact",
-    presetStandard: "Overlay preset: Standard",
-    presetLarge: "Overlay preset: Large",
-    presetTextOnly: "Overlay preset: Text only",
-
-    enterChannel: "Enter a channel",
-    sourceAlreadyAdded: "This source is already added",
-    sourceAdded: "Source added",
-    youtubeSkipped: "YouTube is skipped for now, the tab is prepared for later",
-
-    testOverlayEnabled: "Test overlay enabled, test messages are going to chat",
-    testOverlayDisabled: "Test overlay disabled",
-    testOverlaySwitchFailed: "Failed to switch test overlay",
-
-    connectingSources: "Connecting chat sources...",
-    activeSourcesStatus: "Active sources",
-    noActiveSources: "No active sources to connect",
-    connectSourcesFailed: "Failed to connect sources",
-    disconnectingSources: "Disconnecting Twitch and YouTube...",
-    sourcesDisconnected: "Sources disconnected",
-    sourcesDisconnectedTestKeepsRunning:
-      "Twitch and YouTube disconnected, test overlay keeps running",
-    disconnectSourcesFailed: "Failed to disconnect sources",
-    testOverlayPart: "Test overlay",
-  },
-};
 
 function getSavedLanguage(): AppLanguage | null {
   const value = localStorage.getItem(languageStorageKey);
@@ -360,102 +37,6 @@ function getSavedLanguage(): AppLanguage | null {
   }
 
   return null;
-}
-
-function CollapsibleSection({
-  title,
-  children,
-  defaultOpen = false,
-  badge,
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <section className={isOpen ? "card collapsible open" : "card collapsible"}>
-      <button
-        className="collapsibleHeader"
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        <span className="collapseIcon">{isOpen ? "▾" : "▸"}</span>
-        <span className="collapsibleTitle">{title}</span>
-        {badge && <span className="sectionBadge">{badge}</span>}
-      </button>
-
-      {isOpen && <div className="collapsibleBody">{children}</div>}
-    </section>
-  );
-}
-
-function MiniCollapsibleSection({
-  title,
-  children,
-  defaultOpen = false,
-  badge,
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <section className={isOpen ? "card collapsible open" : "card collapsible"}>
-      <button
-        className="collapsibleHeader"
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        <span className="collapseIcon">{isOpen ? "▾" : "▸"}</span>
-        <span className="collapsibleTitle">{title}</span>
-        {badge && <span className="sectionBadge">{badge}</span>}
-      </button>
-
-      {isOpen && <div className="collapsibleBody">{children}</div>}
-    </section>
-  );
-}
-
-function getPlatformIcon(platform: ChatMessage["platform"]) {
-  if (platform === "twitch") return "T";
-  if (platform === "youtube") return "Y";
-  return "M";
-}
-
-function getPlatformClassName(platform: ChatMessage["platform"]) {
-  if (platform === "twitch") return "platform twitchPlatform";
-  if (platform === "youtube") return "platform youtubePlatform";
-  return "platform mockPlatform";
-}
-
-function getSourcePlatformLabel(platform: ChatSource["platform"]) {
-  if (platform === "twitch") return "Twitch";
-  return "YouTube";
-}
-
-function clampNumber(value: number, fallback: number, min: number, max: number) {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.min(max, Math.max(min, value));
-}
-
-function normalizeTwitchChannelName(channelName: string) {
-  return channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
-}
-
-function normalizeYouTubeInput(channelName: string) {
-  return channelName.trim();
-}
-
-function normalizeSourceInput(platform: ChatSource["platform"], input: string) {
-  if (platform === "twitch") {
-    return normalizeTwitchChannelName(input);
-  }
-
-  return normalizeYouTubeInput(input);
-}
-
-function createSourceId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 const defaultTwitchStatus: TwitchConnectionStatus = {
@@ -546,8 +127,7 @@ export function App() {
 
   const [copyStatus, setCopyStatus] = useState("");
   const [saveStatus, setSaveStatus] = useState(t("loadingSettings"));
-
-  const overlayUrl = "http://localhost:3877/o";
+  const [chatOnlyMode, setChatOnlyMode] = useState(false);
 
   const enabledSourcesCount = sources.filter((source) => source.enabled).length;
   const twitchSourcesCount = sources.filter(
@@ -1273,659 +853,117 @@ export function App() {
   }
 
   return (
-    <main className="app">
+    <main className={chatOnlyMode ? "app chatOnlyMode" : "app"}>
       <aside className="sidebar">
         <h1>{t("appTitle")}</h1>
 
-        <CollapsibleSection
-          title={t("sourcesTitle")}
-          badge={`${enabledSourcesCount} ${t("activeShort")}`}
-        >
-          <div className="connectionStatus">
-            <p>
-              {t("activeSources")}: {enabledSourcesCount}
-            </p>
-            <p>🟣 Twitch: {twitchSourcesCount}</p>
-            <p>🔴 YouTube: {youtubeSourcesCount}</p>
-
-            <p>
-              {t("twitchConnection")}:{" "}
-              {twitchStatus.connected
-                ? `${t("connectedToChannels")} ${twitchStatus.channelNames.length}`
-                : t("notConnected")}
-            </p>
-
-            <p>
-              {t("twitchLogin")}:{" "}
-              {twitchAuthStatus.enabled && twitchAuthStatus.username
-                ? `${t("loggedInAs")} ${twitchAuthStatus.username}`
-                : t("notLoggedIn")}
-            </p>
-
-            {twitchStatus.error && (
-              <p className="errorText">{twitchStatus.error}</p>
-            )}
-
-            <p>
-              {t("youtubeConnection")}:{" "}
-              {youtubeStatus.connected
-                ? `${t("connectedSources")}: ${connectedYoutubeSourcesCount}`
-                : t("notConnected")}
-            </p>
-
-            {youtubeStatus.error && (
-              <p className="errorText">{youtubeStatus.error}</p>
-            )}
-          </div>
-
-          <div className="sourceList">
-            {sources.length === 0 && (
-              <p className="emptyText">{t("noSources")}</p>
-            )}
-
-            {sources.map((source) => (
-              <div className="sourceRow" key={source.id}>
-                <button
-                  className={source.enabled ? "sourceToggle enabled" : "sourceToggle"}
-                  type="button"
-                  onClick={() => toggleSource(source.id)}
-                  title={source.enabled ? t("sourceEnabled") : t("sourceDisabled")}
-                >
-                  {source.enabled ? "✓" : "○"}
-                </button>
-
-                <span className="sourceIcon">
-                  {source.platform === "twitch" ? "🟣" : "🔴"}
-                </span>
-
-                <div className="sourceInfo">
-                  <strong>{getSourcePlatformLabel(source.platform)}</strong>
-                  <span>
-                    {source.platform === "twitch"
-                      ? `#${source.channelName}`
-                      : source.channelName}
-                  </span>
-                </div>
-
-                <button
-                  className="removeSourceButton"
-                  type="button"
-                  onClick={() => removeSource(source.id)}
-                  title={t("removeSource")}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="addSourceTabs">
-            <button
-              className={
-                activeAddSourceTab === "anonymousTwitch"
-                  ? "tabButton active"
-                  : "tabButton"
-              }
-              type="button"
-              onClick={() => setActiveAddSourceTab("anonymousTwitch")}
-            >
-              {t("anonymousTab")}
-            </button>
-
-            <button
-              className={
-                activeAddSourceTab === "twitchLogin"
-                  ? "tabButton active"
-                  : "tabButton"
-              }
-              type="button"
-              onClick={() => setActiveAddSourceTab("twitchLogin")}
-            >
-              {t("twitchLoginTab")}
-            </button>
-
-            <button
-              className={
-                activeAddSourceTab === "youtube" ? "tabButton active" : "tabButton"
-              }
-              type="button"
-              onClick={() => setActiveAddSourceTab("youtube")}
-            >
-              {t("youtubeLaterTab")}
-            </button>
-          </div>
-
-          {activeAddSourceTab === "anonymousTwitch" && (
-            <div className="addSourceBox tabPanel">
-              <MiniCollapsibleSection title={t("publicTwitchRead")}>
-                <div className="tabIntro">
-                  <strong>{t("publicTwitchRead")}</strong>
-                  <small>{t("publicTwitchReadHint")}</small>
-                </div>
-
-                <label className="field">
-                  <span>{t("twitchChannel")}</span>
-                  <input
-                    type="text"
-                    placeholder={t("twitchChannelPlaceholder")}
-                    value={anonymousTwitchChannelName}
-                    onChange={(event) =>
-                      setAnonymousTwitchChannelName(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        addAnonymousTwitchSource();
-                      }
-                    }}
-                  />
-                </label>
-
-                <button
-                  className="button"
-                  type="button"
-                  onClick={addAnonymousTwitchSource}
-                >
-                  {t("addTwitchChannel")}
-                </button>
-              </MiniCollapsibleSection>
-            </div>
-          )}
-
-          {activeAddSourceTab === "twitchLogin" && (
-            <div className="addSourceBox tabPanel">
-              <MiniCollapsibleSection title={t("twitchAccountWork")}>
-                <div className="tabIntro">
-                  <strong>{t("twitchAccountWork")}</strong>
-                  <small>{t("twitchAccountWorkHint")}</small>
-                </div>
-
-                <div className="authCard">
-                  <div>
-                    <span className="authLabel">{t("status")}</span>
-                    <strong>
-                      {twitchAuthStatus.enabled && twitchAuthStatus.username
-                        ? `${t("loginDone")}: ${twitchAuthStatus.username}`
-                        : t("loginNotDone")}
-                    </strong>
-                  </div>
-
-                  {twitchAuthStatus.enabled && twitchAuthStatus.hasToken ? (
-                    <button
-                      className="button secondaryButton"
-                      type="button"
-                      onClick={logoutTwitch}
-                    >
-                      {t("logoutTwitch")}
-                    </button>
-                  ) : (
-                    <button
-                      className="button"
-                      type="button"
-                      onClick={startTwitchLogin}
-                    >
-                      {t("loginWithTwitch")}
-                    </button>
-                  )}
-                </div>
-              </MiniCollapsibleSection>
-
-              <MiniCollapsibleSection title={t("twitchChannelForReading")}>
-                <label className="field">
-                  <span>{t("twitchChannelForReading")}</span>
-                  <input
-                    type="text"
-                    placeholder={t("twitchChannelPlaceholder")}
-                    value={authTwitchChannelName}
-                    onChange={(event) =>
-                      setAuthTwitchChannelName(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        addAuthTwitchSource();
-                      }
-                    }}
-                  />
-                </label>
-
-                <button
-                  className="button"
-                  type="button"
-                  onClick={addAuthTwitchSource}
-                >
-                  {t("addChannelViaLogin")}
-                </button>
-
-                <p className="hint">{t("reconnectAfterLogin")}</p>
-              </MiniCollapsibleSection>
-            </div>
-          )}
-
-          {activeAddSourceTab === "youtube" && (
-            <div className="addSourceBox tabPanel">
-              <MiniCollapsibleSection title={t("youtubeWillBeLater")}>
-                <div className="tabIntro">
-                  <strong>{t("youtubeWillBeLater")}</strong>
-                  <small>{t("youtubeWillBeLaterHint")}</small>
-                </div>
-
-                <label className="field">
-                  <span>{t("youtubeLinkOrVideoId")}</span>
-                  <input
-                    type="text"
-                    placeholder={t("youtubeDisabledPlaceholder")}
-                    value={youtubeInput}
-                    onChange={(event) => setYoutubeInput(event.target.value)}
-                    disabled
-                  />
-                </label>
-
-                <label className="field youtubeApiKeyField">
-                  <span>{t("youtubeApiKey")}</span>
-                  <input
-                    type="password"
-                    placeholder={t("youtubeApiKeyPlaceholder")}
-                    value={youtubeApiKey}
-                    onChange={(event) => setYoutubeApiKey(event.target.value)}
-                    disabled
-                  />
-                </label>
-
-                <button
-                  className="button secondaryButton"
-                  type="button"
-                  onClick={addYouTubeSource}
-                >
-                  {t("youtubeDisabled")}
-                </button>
-              </MiniCollapsibleSection>
-            </div>
-          )}
-
-          <div className="buttonRow">
-            <button className="button" type="button" onClick={connectChat}>
-              {t("connectSources")}
-            </button>
-
-            <button
-              className="button secondaryButton"
-              type="button"
-              onClick={disconnectChat}
-            >
-              {t("disconnectSources")}
-            </button>
-          </div>
-
-          {chatActionStatus && <p className="copyStatus">{chatActionStatus}</p>}
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("obsOverlay")}
-          badge={`${overlayWidth}×${overlayHeight}`}
-        >
-          <p className="hint">{t("quickPresetsHint")}</p>
-
-          <div className="buttonRow">
-            <button
-              className="button ghostButton"
-              type="button"
-              onClick={() => applyOverlayPreset("compact")}
-            >
-              {t("compact")}
-            </button>
-
-            <button
-              className="button ghostButton"
-              type="button"
-              onClick={() => applyOverlayPreset("standard")}
-            >
-              {t("standard")}
-            </button>
-          </div>
-
-          <div className="buttonRow">
-            <button
-              className="button ghostButton"
-              type="button"
-              onClick={() => applyOverlayPreset("large")}
-            >
-              {t("large")}
-            </button>
-
-            <button
-              className="button ghostButton"
-              type="button"
-              onClick={() => applyOverlayPreset("textOnly")}
-            >
-              {t("textOnly")}
-            </button>
-          </div>
-
-          <div className="fieldGroup">
-            <label className="field">
-              <span>{t("obsWidth")}</span>
-              <input
-                type="number"
-                min="100"
-                value={overlayWidth}
-                onChange={(event) => setOverlayWidth(Number(event.target.value))}
-              />
-            </label>
-
-            <label className="field">
-              <span>{t("obsHeight")}</span>
-              <input
-                type="number"
-                min="100"
-                value={overlayHeight}
-                onChange={(event) => setOverlayHeight(Number(event.target.value))}
-              />
-            </label>
-
-            <label className="field">
-              <span>{t("fontSize")}</span>
-              <input
-                type="number"
-                min="10"
-                max="120"
-                value={overlayFontSize}
-                onChange={(event) => setOverlayFontSize(Number(event.target.value))}
-              />
-            </label>
-
-            <label className="field">
-              <span>{t("chatBlockWidth")}</span>
-              <input
-                type="number"
-                min="200"
-                max="3000"
-                value={overlayChatWidth}
-                onChange={(event) =>
-                  setOverlayChatWidth(Number(event.target.value))
-                }
-              />
-            </label>
-
-            <label className="field">
-              <span>{t("messagesOnScreen")}</span>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={overlayMaxMessages}
-                onChange={(event) =>
-                  setOverlayMaxMessages(Number(event.target.value))
-                }
-              />
-            </label>
-
-            <label className="field">
-              <span>{t("position")}</span>
-              <select
-                value={overlayPosition}
-                onChange={(event) =>
-                  setOverlayPosition(event.target.value as OverlayPosition)
-                }
-              >
-                <option value="left">{t("leftBottom")}</option>
-                <option value="center">{t("centerBottom")}</option>
-                <option value="right">{t("rightBottom")}</option>
-              </select>
-            </label>
-          </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection title={t("messageAppearance")}>
-          <div className="toggleGroup">
-            <label className="toggleField">
-              <input
-                type="checkbox"
-                checked={overlayShowPlatformIcon}
-                onChange={(event) =>
-                  setOverlayShowPlatformIcon(event.target.checked)
-                }
-              />
-              <span>{t("showPlatformIcon")}</span>
-            </label>
-
-            <label className="toggleField">
-              <input
-                type="checkbox"
-                checked={overlayShowAuthorName}
-                onChange={(event) => setOverlayShowAuthorName(event.target.checked)}
-              />
-              <span>{t("showAuthorName")}</span>
-            </label>
-
-            <label className="toggleField">
-              <input
-                type="checkbox"
-                checked={overlayShowChannelName}
-                onChange={(event) =>
-                  setOverlayShowChannelName(event.target.checked)
-                }
-              />
-              <span>{t("showChannelName")}</span>
-            </label>
-          </div>
-
-          <div className="fieldGroup">
-            <label className="field">
-              <span>
-                {t("backgroundOpacity")}: {overlayBackgroundOpacity}%
-              </span>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={overlayBackgroundOpacity}
-                onChange={(event) =>
-                  setOverlayBackgroundOpacity(Number(event.target.value))
-                }
-              />
-            </label>
-
-            <label className="field">
-              <span>
-                {t("borderRadius")}: {overlayBorderRadius}px
-              </span>
-              <input
-                type="range"
-                min="0"
-                max="60"
-                value={overlayBorderRadius}
-                onChange={(event) =>
-                  setOverlayBorderRadius(Number(event.target.value))
-                }
-              />
-            </label>
-
-            <label className="field">
-              <span>
-                {t("messageGap")}: {overlayMessageGap}px
-              </span>
-              <input
-                type="range"
-                min="0"
-                max="40"
-                value={overlayMessageGap}
-                onChange={(event) => setOverlayMessageGap(Number(event.target.value))}
-              />
-            </label>
-          </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection title={t("messageFilters")}>
-          <div className="toggleGroup">
-            <label className="toggleField">
-              <input
-                type="checkbox"
-                checked={filterHideCommands}
-                onChange={(event) => setFilterHideCommands(event.target.checked)}
-              />
-              <span>{t("hideCommands")}</span>
-            </label>
-
-            <label className="toggleField">
-              <input
-                type="checkbox"
-                checked={filterHideLinks}
-                onChange={(event) => setFilterHideLinks(event.target.checked)}
-              />
-              <span>{t("hideLinks")}</span>
-            </label>
-          </div>
-
-          <label className="field filterField">
-            <span>{t("onlyWords")}</span>
-            <input
-              type="text"
-              placeholder={t("onlyWordsPlaceholder")}
-              value={filterOnlyWords}
-              onChange={(event) => setFilterOnlyWords(event.target.value)}
-            />
-          </label>
-
-          <label className="field filterField">
-            <span>{t("highlightWords")}</span>
-            <input
-              type="text"
-              placeholder={t("highlightWordsPlaceholder")}
-              value={filterHighlightWords}
-              onChange={(event) => setFilterHighlightWords(event.target.value)}
-            />
-          </label>
-
-          <p className="hint">{t("filtersHint")}</p>
-        </CollapsibleSection>
-
-        <CollapsibleSection title={t("obsLinkTitle")}>
-          <code>{overlayUrl}</code>
-
-          <button className="button" type="button" onClick={copyOverlayUrl}>
-            {t("copyLink")}
-          </button>
-
-          {copyStatus && <p className="copyStatus">{copyStatus}</p>}
-
-          <p className="copyStatus">{saveStatus}</p>
-
-          {settingsFilePath && (
-            <p className="hint">
-              {t("settingsFile")}: <br />
-              {settingsFilePath}
-            </p>
-          )}
-
-          <p className="hint">{t("obsLinkHint")}</p>
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          title={t("testOverlay")}
-          badge={mockOverlayEnabled ? t("enabled") : t("disabled")}
-        >
-          <label className="bigToggleField">
-            <input
-              type="checkbox"
-              checked={mockOverlayEnabled}
-              onChange={(event) => setMockOverlayTestEnabled(event.target.checked)}
-            />
-            <span>
-              <strong>{t("enableTestOverlay")}</strong>
-              <small>{t("testOverlayHint")}</small>
-            </span>
-          </label>
-
-          <p className="hint">{t("testOverlayHint2")}</p>
-        </CollapsibleSection>
-
-        <CollapsibleSection title={t("aboutTitle")} badge="v0.1.4">
-          <div className="aboutBox">
-            <p>
-              <strong>Stream Chat Hub</strong> beta v0.1.4
-            </p>
-
-            <p className="hint">{t("aboutText")}</p>
-
-            <div className="linkList">
-              <a
-                href="https://github.com/postdelik/Stream-Chat-Hub"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t("projectGithub")}
-              </a>
-
-              <a
-                href="https://boosty.to/postdelik"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {t("supportProject")}
-              </a>
-            </div>
-
-            <div className="languageSwitcher">
-              <span>{t("language")}</span>
-
-              <div className="languageSwitcherButtons">
-                <button
-                  className={language === "ru" ? "smallButton activeLanguage" : "smallButton"}
-                  type="button"
-                  onClick={() => chooseLanguage("ru")}
-                >
-                  RU
-                </button>
-
-                <button
-                  className={language === "en" ? "smallButton activeLanguage" : "smallButton"}
-                  type="button"
-                  onClick={() => chooseLanguage("en")}
-                >
-                  EN
-                </button>
-              </div>
-            </div>
-
-            <p className="hint">{t("changeLanguageHint")}</p>
-          </div>
-        </CollapsibleSection>
+        <SourcesSection
+          t={t}
+          enabledSourcesCount={enabledSourcesCount}
+          twitchSourcesCount={twitchSourcesCount}
+          youtubeSourcesCount={youtubeSourcesCount}
+          connectedYoutubeSourcesCount={connectedYoutubeSourcesCount}
+          sources={sources}
+          twitchStatus={twitchStatus}
+          twitchAuthStatus={twitchAuthStatus}
+          youtubeStatus={youtubeStatus}
+          activeAddSourceTab={activeAddSourceTab}
+          setActiveAddSourceTab={setActiveAddSourceTab}
+          anonymousTwitchChannelName={anonymousTwitchChannelName}
+          setAnonymousTwitchChannelName={setAnonymousTwitchChannelName}
+          authTwitchChannelName={authTwitchChannelName}
+          setAuthTwitchChannelName={setAuthTwitchChannelName}
+          youtubeInput={youtubeInput}
+          setYoutubeInput={setYoutubeInput}
+          youtubeApiKey={youtubeApiKey}
+          setYoutubeApiKey={setYoutubeApiKey}
+          chatActionStatus={chatActionStatus}
+          toggleSource={toggleSource}
+          removeSource={removeSource}
+          addAnonymousTwitchSource={addAnonymousTwitchSource}
+          addAuthTwitchSource={addAuthTwitchSource}
+          addYouTubeSource={addYouTubeSource}
+          startTwitchLogin={startTwitchLogin}
+          logoutTwitch={logoutTwitch}
+          connectChat={connectChat}
+          disconnectChat={disconnectChat}
+        />
+
+        <OverlaySettingsSection
+          t={t}
+          overlayWidth={overlayWidth}
+          overlayHeight={overlayHeight}
+          overlayFontSize={overlayFontSize}
+          overlayChatWidth={overlayChatWidth}
+          overlayMaxMessages={overlayMaxMessages}
+          overlayPosition={overlayPosition}
+          setOverlayWidth={setOverlayWidth}
+          setOverlayHeight={setOverlayHeight}
+          setOverlayFontSize={setOverlayFontSize}
+          setOverlayChatWidth={setOverlayChatWidth}
+          setOverlayMaxMessages={setOverlayMaxMessages}
+          setOverlayPosition={setOverlayPosition}
+          applyOverlayPreset={applyOverlayPreset}
+        />
+
+        <OverlayAppearanceSection
+          t={t}
+          overlayShowPlatformIcon={overlayShowPlatformIcon}
+          overlayShowAuthorName={overlayShowAuthorName}
+          overlayShowChannelName={overlayShowChannelName}
+          overlayBackgroundOpacity={overlayBackgroundOpacity}
+          overlayBorderRadius={overlayBorderRadius}
+          overlayMessageGap={overlayMessageGap}
+          setOverlayShowPlatformIcon={setOverlayShowPlatformIcon}
+          setOverlayShowAuthorName={setOverlayShowAuthorName}
+          setOverlayShowChannelName={setOverlayShowChannelName}
+          setOverlayBackgroundOpacity={setOverlayBackgroundOpacity}
+          setOverlayBorderRadius={setOverlayBorderRadius}
+          setOverlayMessageGap={setOverlayMessageGap}
+        />
+
+        <MessageFiltersSection
+          t={t}
+          filterHideCommands={filterHideCommands}
+          filterHideLinks={filterHideLinks}
+          filterOnlyWords={filterOnlyWords}
+          filterHighlightWords={filterHighlightWords}
+          setFilterHideCommands={setFilterHideCommands}
+          setFilterHideLinks={setFilterHideLinks}
+          setFilterOnlyWords={setFilterOnlyWords}
+          setFilterHighlightWords={setFilterHighlightWords}
+        />
+
+        <ObsLinkSection
+          t={t}
+          overlayUrl={overlayUrl}
+          copyStatus={copyStatus}
+          saveStatus={saveStatus}
+          settingsFilePath={settingsFilePath}
+          copyOverlayUrl={copyOverlayUrl}
+        />
+
+        <TestOverlaySection
+          t={t}
+          mockOverlayEnabled={mockOverlayEnabled}
+          setMockOverlayTestEnabled={setMockOverlayTestEnabled}
+        />
+
+        <AboutSection
+          language={language}
+          t={t}
+          chooseLanguage={chooseLanguage}
+        />
       </aside>
 
-      <section className="chat">
-        <header className="chatHeader">
-          <div>
-            <h2>{t("commonChat")}</h2>
-            <span>
-              {messages.length} {t("messages")}
-            </span>
-          </div>
-
-          <button className="smallButton" type="button" onClick={clearMessages}>
-            {t("clear")}
-          </button>
-        </header>
-
-        <div className="messages">
-          {messages.map((message) => (
-            <article key={message.id} className="message">
-              <span className={getPlatformClassName(message.platform)}>
-                {getPlatformIcon(message.platform)}
-              </span>
-
-              <div>
-                <div className="meta">
-                  <strong>{message.authorName}</strong>
-                  <span>#{message.channelName}</span>
-                </div>
-
-                <p>{message.text}</p>
-              </div>
-            </article>
-          ))}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </section>
+      <ChatView
+        messages={messages}
+        messagesEndRef={messagesEndRef}
+        t={t}
+        clearMessages={clearMessages}
+        chatOnlyMode={chatOnlyMode}
+        onToggleChatOnlyMode={() => setChatOnlyMode((current) => !current)}
+      />
     </main>
   );
 }

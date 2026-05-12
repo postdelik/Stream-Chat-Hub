@@ -638,3 +638,37 @@ code {
   color: #ffffff;
   box-shadow: 0 12px 30px rgba(124, 58, 237, 0.26);
 }
+.chatHeaderButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app.chatOnlyMode {
+  grid-template-columns: 1fr;
+}
+
+.app.chatOnlyMode .sidebar {
+  display: none;
+}
+
+.app.chatOnlyMode .chat {
+  width: 100vw;
+}
+.chatHeaderButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app.chatOnlyMode {
+  grid-template-columns: 1fr;
+}
+
+.app.chatOnlyMode .sidebar {
+  display: none;
+}
+
+.app.chatOnlyMode .chat {
+  width: 100vw;
+}

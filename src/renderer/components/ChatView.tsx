@@ -7,6 +7,8 @@ type ChatViewProps = {
   messagesEndRef: RefObject<HTMLDivElement | null>;
   t: (key: string) => string;
   clearMessages: () => void;
+  chatOnlyMode: boolean;
+  onToggleChatOnlyMode: () => void;
 };
 
 export function ChatView({
@@ -14,6 +16,8 @@ export function ChatView({
   messagesEndRef,
   t,
   clearMessages,
+  chatOnlyMode,
+  onToggleChatOnlyMode,
 }: ChatViewProps) {
   return (
     <section className="chat">
@@ -25,9 +29,19 @@ export function ChatView({
           </span>
         </div>
 
-        <button className="smallButton" type="button" onClick={clearMessages}>
-          {t("clear")}
-        </button>
+        <div className="chatHeaderButtons">
+          <button
+            className="smallButton secondaryButton"
+            type="button"
+            onClick={onToggleChatOnlyMode}
+          >
+            {chatOnlyMode ? "Показать настройки" : "Только чат"}
+          </button>
+
+          <button className="smallButton" type="button" onClick={clearMessages}>
+            {t("clear")}
+          </button>
+        </div>
       </header>
 
       <div className="messages">
