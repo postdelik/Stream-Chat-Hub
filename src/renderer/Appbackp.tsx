@@ -773,38 +773,37 @@ export function App() {
   }
 
   function addAnonymousTwitchSource() {
-    const channelName = normalizeSourceInput("twitch", anonymousTwitchChannelName);
+  const channelName = normalizeSourceInput("twitch", anonymousTwitchChannelName);
 
-    if (!channelName) {
-      setChatActionStatus(t("enterChannel"));
-      return;
-    }
-
-    const alreadyExists = sources.some(
-      (source) =>
-        source.platform === "twitch" && source.channelName === channelName
-    );
-
-    if (alreadyExists) {
-      setChatActionStatus(t("sourceAlreadyAdded"));
-      return;
-    }
-
-    const nextSource: ChatSource = {
-      id: createSourceId(),
-      platform: "twitch",
-      channelName,
-      enabled: true,
-    };
-
-    const nextSources = [...sources, nextSource];
-
-    setSources(nextSources);
-    setAnonymousTwitchChannelName("");
-    setChatActionStatus(`Источник добавлен, подключаю Twitch: #${channelName}`);
-
-    void connectChatWithSources(nextSources);
+  if (!channelName) {
+    setChatActionStatus(t("enterChannel"));
+    return;
   }
+
+  const alreadyExists = sources.some(
+    (source) => source.platform === "twitch" && source.channelName === channelName
+  );
+
+  if (alreadyExists) {
+    setChatActionStatus(t("sourceAlreadyAdded"));
+    return;
+  }
+
+  const nextSource: ChatSource = {
+    id: createSourceId(),
+    platform: "twitch",
+    channelName,
+    enabled: true,
+  };
+
+  const nextSources = [...sources, nextSource];
+
+  setSources(nextSources);
+  setAnonymousTwitchChannelName("");
+  setChatActionStatus(`Источник добавлен, подключаю Twitch: #${channelName}`);
+
+  connectChatWithSources(nextSources);
+}
 
   function addAuthTwitchSource() {
     const added = addSource("twitch", authTwitchChannelName);
@@ -947,61 +946,6 @@ export function App() {
       }
 
       setChatActionStatus(`${t("activeSourcesStatus")}: ${parts.join(", ")}`);
-    } catch {
-      setChatActionStatus(t("connectSourcesFailed"));
-    }
-  }
-
-  async function connectChatWithSources(nextSources: ChatSource[]) {
-    try {
-      setChatActionStatus(t("connectingSources"));
-
-      const response = await fetch("http://localhost:3877/chat/connect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sources: nextSources,
-          youtubeApiKey,
-        }),
-      });
-
-      const data = (await response.json()) as {
-        ok: boolean;
-        twitchStatus: TwitchConnectionStatus;
-        youtubeStatus: YouTubeConnectionStatus;
-        mockStatus?: {
-          running: boolean;
-        };
-      };
-
-      setTwitchStatus(data.twitchStatus);
-      setYoutubeStatus(data.youtubeStatus);
-
-      if (data.mockStatus) {
-        setMockOverlayEnabled(data.mockStatus.running);
-      }
-
-      if (data.twitchStatus.connected) {
-        setChatActionStatus(
-          `Twitch подключён: ${data.twitchStatus.channelNames
-            .map((name) => `#${name}`)
-            .join(", ")}`
-        );
-        return;
-      }
-
-      if (data.mockStatus?.running) {
-        setChatActionStatus(t("testOverlayEnabled"));
-        return;
-      }
-
-      setChatActionStatus(
-        data.twitchStatus.error ||
-          data.youtubeStatus.error ||
-          t("noActiveSources")
-      );
     } catch {
       setChatActionStatus(t("connectSourcesFailed"));
     }

@@ -23,8 +23,16 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function createAnonymousUsername() {
+  return `justinfan${Math.floor(Math.random() * 100000)}`;
+}
+
 function normalizeChannelName(channelName: string) {
-  return channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
+  return channelName
+    .trim()
+    .replace(/^#/, "")
+    .replace(/^@/, "")
+    .toLowerCase();
 }
 
 function normalizeOAuthToken(token: string) {
@@ -69,38 +77,105 @@ export class TwitchChatClient {
       )
     );
 
-    const useAuth = Boolean(auth?.enabled && auth.username && auth.accessToken);
-
     if (normalizedChannelNames.length === 0) {
       this.status = {
         connected: false,
         channelNames: [],
         error: "Нет Twitch-каналов для подключения",
-        authenticated: useAuth,
-        username: useAuth ? auth?.username ?? null : null,
+        authenticated: false,
+        username: null,
       };
 
       return this.status;
     }
 
+    const useAuth = Boolean(auth?.enabled && auth.username && auth.accessToken);
+
+    const identity = useAuth
+      ? {
+          username: auth!.username!,
+          password: normalizeOAuthToken(auth!.accessToken!),
+        }
+      : {
+          username: createAnonymousUsername(),
+          password: "SCHMOOPIIE",
+        };
+
     try {
-      const options: Record<string, unknown> = {
+      const options = {
+        options: {
+          debug: true,
+        },
+
         connection: {
           reconnect: true,
           secure: true,
         },
+
+        identity,
+
         channels: normalizedChannelNames,
       };
 
-      if (useAuth && auth?.username && auth?.accessToken) {
-        options.identity = {
-          username: auth.username,
-          password: normalizeOAuthToken(auth.accessToken),
-        };
-      }
+      console.log("[TWITCH] Подключение...");
+      console.log("[TWITCH] Каналы:", normalizedChannelNames);
+      console.log("[TWITCH] Auth mode:", useAuth ? "oauth" : "anonymous");
+      console.log("[TWITCH] Username:", identity.username);
 
       const client: TwitchClientLike = new tmi.Client(options);
+
       this.client = client;
+
+      client.on("connected", (address: string, port: number) => {
+        console.log("[TWITCH CONNECTED]", address, port);
+
+        this.status = {
+          connected: true,
+          channelNames: normalizedChannelNames,
+          error: null,
+          authenticated: useAuth,
+          username: useAuth ? auth?.username ?? null : identity.username,
+        };
+      });
+
+      client.on("disconnected", (reason: string) => {
+        console.error("[TWITCH DISCONNECTED]", reason);
+
+        this.status = {
+          connected: false,
+          channelNames: normalizedChannelNames,
+          error: reason || "Twitch отключён",
+          authenticated: useAuth,
+          username: useAuth ? auth?.username ?? null : identity.username,
+        };
+      });
+
+      client.on(
+        "notice",
+        (channel: string, msgid: string, message: string) => {
+          console.error("[TWITCH NOTICE]", {
+            channel,
+            msgid,
+            message,
+          });
+        }
+      );
+
+      client.on("reconnect", () => {
+        console.warn("[TWITCH] Reconnecting...");
+      });
+
+      client.on("join", (channel: string, username: string) => {
+        console.log("[TWITCH JOIN]", channel, username);
+      });
+
+      client.on("part", (channel: string, username: string) => {
+        console.log("[TWITCH PART]", channel, username);
+      });
+
+      client.on("roomstate", (channel: string, state: unknown) => {
+        console.log("[TWITCH ROOMSTATE]", channel, state);
+      });
 
       client.on(
         "message",
@@ -115,8 +190,13 @@ export class TwitchChatClient {
           }
 
           const channelName = normalizeChannelName(channel);
+
           const authorName =
             userstate["display-name"] || userstate.username || "unknown";
+
+          console.log(
+            `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`
+          );
 
           this.onMessage({
             id: userstate.id || createMessageId(),
@@ -129,38 +209,22 @@ export class TwitchChatClient {
         }
       );
 
-      client.on("connected", () => {
-        this.status = {
-          connected: true,
-          channelNames: normalizedChannelNames,
-          error: null,
-          authenticated: useAuth,
-          username: useAuth ? auth?.username ?? null : null,
-        };
-      });
-
-      client.on("disconnected", (reason: string) => {
-        this.status = {
-          connected: false,
-          channelNames: normalizedChannelNames,
-          error: reason || "Twitch отключён",
-          authenticated: useAuth,
-          username: useAuth ? auth?.username ?? null : null,
-        };
-      });
-
       await client.connect();
+
+      console.log("[TWITCH] connect() completed");
 
       this.status = {
         connected: true,
         channelNames: normalizedChannelNames,
         error: null,
         authenticated: useAuth,
-        username: useAuth ? auth?.username ?? null : null,
+        username: useAuth ? auth?.username ?? null : identity.username,
       };
 
       return this.status;
     } catch (error) {
+      console.error("[TWITCH ERROR]", error);
+
       const errorMessage =
         error instanceof Error ? error.message : "Ошибка подключения Twitch";
 
@@ -169,7 +233,7 @@ export class TwitchChatClient {
         channelNames: normalizedChannelNames,
         error: errorMessage,
         authenticated: useAuth,
-        username: useAuth ? auth?.username ?? null : null,
+        username: useAuth ? auth?.username ?? null : identity.username,
       };
 
       return this.status;
@@ -192,9 +256,10 @@ export class TwitchChatClient {
     }
 
     try {
+      console.log("[TWITCH] Disconnecting...");
       await client.disconnect();
-    } catch {
-      // tmi.js может ругнуться, если клиент уже отключён.
+    } catch (error) {
+      console.warn("[TWITCH] disconnect warning", error);
     }
 
     this.client = null;

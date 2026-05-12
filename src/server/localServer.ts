@@ -18,7 +18,7 @@ const PORT = 3877;
 
 const TWITCH_CLIENT_ID = "18ipdprohcqbx04oykqelu0a3h92mc";
 const TWITCH_REDIRECT_URI = `http://localhost:${PORT}/twitch/auth/callback`;
-const TWITCH_SCOPES = ["chat:read", "chat:write"];
+const TWITCH_SCOPES = ["chat:read", "chat:edit"];
 
 const settingsDir = path.join(os.homedir(), ".stream-chat-hub");
 const settingsFilePath = path.join(settingsDir, "settings.json");
@@ -831,10 +831,22 @@ export async function startLocalServer() {
     const twitchChannelNames = getEnabledTwitchChannelNames(appSettings.sources);
     const twitchAuth = appSettings.twitchAuth || defaultTwitchAuth;
 
-    const twitchStatus = await twitchChatClient.connect(
-      twitchChannelNames,
-      twitchAuth.enabled ? twitchAuth : null
-    );
+    console.log("[CHAT CONNECT]");
+console.log("[TWITCH CHANNELS]", twitchChannelNames);
+console.log("[TWITCH AUTH]", {
+  enabled: twitchAuth.enabled,
+  username: twitchAuth.username,
+  hasToken: Boolean(twitchAuth.accessToken),
+  scopes: twitchAuth.scopes,
+  expiresAt: twitchAuth.expiresAt,
+});
+
+const twitchStatus = await twitchChatClient.connect(
+  twitchChannelNames,
+  twitchAuth.enabled ? twitchAuth : null
+);
+
+console.log("[TWITCH STATUS AFTER CONNECT]", twitchStatus);
 
     return {
       ok: true,
