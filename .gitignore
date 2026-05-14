@@ -24,3 +24,6 @@ dist/
 build/
 .stream-chat-hub/
 settings.json
+.env
+.env.*
+!.env.example

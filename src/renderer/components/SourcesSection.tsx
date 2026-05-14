@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type {
   ChatSource,
   SafeTwitchAuthState,
+  SafeYouTubeAuthState,
   TwitchConnectionStatus,
   YouTubeConnectionStatus,
 } from "../../shared/types";
@@ -26,6 +27,7 @@ type SourcesSectionProps = {
   twitchStatus: TwitchConnectionStatus;
   twitchAuthStatus: SafeTwitchAuthState;
   youtubeStatus: YouTubeConnectionStatus;
+  youtubeAuthStatus: SafeYouTubeAuthState;
 
   activeAddSourceTab: AddSourceTab;
   setActiveAddSourceTab: Dispatch<SetStateAction<AddSourceTab>>;
@@ -39,9 +41,6 @@ type SourcesSectionProps = {
   youtubeInput: string;
   setYoutubeInput: Dispatch<SetStateAction<string>>;
 
-  youtubeApiKey: string;
-  setYoutubeApiKey: Dispatch<SetStateAction<string>>;
-
   chatActionStatus: string;
 
   toggleSource: (sourceId: string) => void;
@@ -54,8 +53,8 @@ type SourcesSectionProps = {
   startTwitchLogin: () => void;
   logoutTwitch: () => void;
 
-  connectChat?: () => void;
-  disconnectChat?: () => void;
+  startYouTubeLogin: () => void;
+  logoutYouTube: () => void;
 };
 
 export function SourcesSection({
@@ -63,14 +62,11 @@ export function SourcesSection({
 
   enabledSourcesCount,
   twitchSourcesCount,
-  youtubeSourcesCount,
-  connectedYoutubeSourcesCount,
 
   sources,
 
   twitchStatus,
   twitchAuthStatus,
-  youtubeStatus,
 
   activeAddSourceTab,
   setActiveAddSourceTab,
@@ -78,23 +74,12 @@ export function SourcesSection({
   anonymousTwitchChannelName,
   setAnonymousTwitchChannelName,
 
-  authTwitchChannelName,
-  setAuthTwitchChannelName,
-
-  youtubeInput,
-  setYoutubeInput,
-
-  youtubeApiKey,
-  setYoutubeApiKey,
-
   chatActionStatus,
 
   toggleSource,
   removeSource,
 
   addAnonymousTwitchSource,
-  addAuthTwitchSource,
-  addYouTubeSource,
 
   startTwitchLogin,
   logoutTwitch,
@@ -109,7 +94,6 @@ export function SourcesSection({
           {t("activeSources")}: {enabledSourcesCount}
         </p>
         <p>🟣 Twitch: {twitchSourcesCount}</p>
-        <p>🔴 YouTube: {youtubeSourcesCount}</p>
 
         <p>
           {t("twitchConnection")}:{" "}
@@ -127,17 +111,6 @@ export function SourcesSection({
 
         {twitchStatus.error && (
           <p className="errorText">{twitchStatus.error}</p>
-        )}
-
-        <p>
-          {t("youtubeConnection")}:{" "}
-          {youtubeStatus.connected
-            ? `${t("connectedSources")}: ${connectedYoutubeSourcesCount}`
-            : t("notConnected")}
-        </p>
-
-        {youtubeStatus.error && (
-          <p className="errorText">{youtubeStatus.error}</p>
         )}
       </div>
 
@@ -180,7 +153,7 @@ export function SourcesSection({
         ))}
       </div>
 
-      <div className="addSourceTabs">
+      <div className="addSourceTabs twoTabs">
         <button
           className={
             activeAddSourceTab === "anonymousTwitch"
@@ -204,21 +177,11 @@ export function SourcesSection({
         >
           {t("twitchLoginTab")}
         </button>
-
-        <button
-          className={
-            activeAddSourceTab === "youtube" ? "tabButton active" : "tabButton"
-          }
-          type="button"
-          onClick={() => setActiveAddSourceTab("youtube")}
-        >
-          {t("youtubeLaterTab")}
-        </button>
       </div>
 
       {activeAddSourceTab === "anonymousTwitch" && (
         <div className="addSourceBox tabPanel">
-          <MiniCollapsibleSection title={t("publicTwitchRead")}>
+          <MiniCollapsibleSection title={t("publicTwitchRead")} defaultOpen>
             <div className="tabIntro">
               <strong>{t("publicTwitchRead")}</strong>
               <small>{t("publicTwitchReadHint")}</small>
@@ -254,10 +217,13 @@ export function SourcesSection({
 
       {activeAddSourceTab === "twitchLogin" && (
         <div className="addSourceBox tabPanel">
-          <MiniCollapsibleSection title={t("twitchAccountWork")}>
+          <MiniCollapsibleSection title={t("twitchAccountWork")} defaultOpen>
             <div className="tabIntro">
               <strong>{t("twitchAccountWork")}</strong>
-              <small>{t("twitchAccountWorkHint")}</small>
+              <small>
+                После входа приложение автоматически добавит канал твоего Twitch
+                аккаунта и подключит чат.
+              </small>
             </div>
 
             <div className="authCard">
@@ -288,76 +254,10 @@ export function SourcesSection({
                 </button>
               )}
             </div>
-          </MiniCollapsibleSection>
 
-          <MiniCollapsibleSection title={t("twitchChannelForReading")}>
-            <label className="field">
-              <span>{t("twitchChannelForReading")}</span>
-              <input
-                type="text"
-                placeholder={t("twitchChannelPlaceholder")}
-                value={authTwitchChannelName}
-                onChange={(event) =>
-                  setAuthTwitchChannelName(event.target.value)
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    addAuthTwitchSource();
-                  }
-                }}
-              />
-            </label>
-
-            <button
-              className="button"
-              type="button"
-              onClick={addAuthTwitchSource}
-            >
-              {t("addChannelViaLogin")}
-            </button>
-
-            <p className="hint">{t("reconnectAfterLogin")}</p>
-          </MiniCollapsibleSection>
-        </div>
-      )}
-
-      {activeAddSourceTab === "youtube" && (
-        <div className="addSourceBox tabPanel">
-          <MiniCollapsibleSection title={t("youtubeWillBeLater")}>
-            <div className="tabIntro">
-              <strong>{t("youtubeWillBeLater")}</strong>
-              <small>{t("youtubeWillBeLaterHint")}</small>
-            </div>
-
-            <label className="field">
-              <span>{t("youtubeLinkOrVideoId")}</span>
-              <input
-                type="text"
-                placeholder={t("youtubeDisabledPlaceholder")}
-                value={youtubeInput}
-                onChange={(event) => setYoutubeInput(event.target.value)}
-                disabled
-              />
-            </label>
-
-            <label className="field youtubeApiKeyField">
-              <span>{t("youtubeApiKey")}</span>
-              <input
-                type="password"
-                placeholder={t("youtubeApiKeyPlaceholder")}
-                value={youtubeApiKey}
-                onChange={(event) => setYoutubeApiKey(event.target.value)}
-                disabled
-              />
-            </label>
-
-            <button
-              className="button secondaryButton"
-              type="button"
-              onClick={addYouTubeSource}
-            >
-              {t("youtubeDisabled")}
-            </button>
+            <p className="hint">
+              Для чтения чужого канала без входа используй вкладку “Без логина”.
+            </p>
           </MiniCollapsibleSection>
         </div>
       )}

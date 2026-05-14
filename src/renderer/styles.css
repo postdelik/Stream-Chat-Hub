@@ -17,7 +17,7 @@
 
 body {
   margin: 0;
-  min-width: 960px;
+  min-width: 0;
   min-height: 100vh;
   background:
     radial-gradient(circle at 10% 10%, rgba(124, 58, 237, 0.24), transparent 28%),
@@ -655,20 +655,84 @@ code {
 .app.chatOnlyMode .chat {
   width: 100vw;
 }
-.chatHeaderButtons {
-  display: flex;
+.addSourceTabs.twoTabs {
+  grid-template-columns: 1fr 1fr;
+}
+.buttonRow {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.buttonRow + .buttonRow {
+  margin-top: 0;
+}
+.button,
+.smallButton {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .chat {
+    width: 100vw;
+    padding: 12px;
+  }
+
+  .chatHeader {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .chatHeader h2 {
+    font-size: 19px;
+  }
+
+  .chatHeaderButtons {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .smallButton {
+    min-height: 32px;
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+
+  .message {
+    grid-template-columns: 30px 1fr;
+    padding: 11px;
+    border-radius: 14px;
+  }
+
+  .platform {
+    width: 28px;
+    height: 28px;
+  }
+}
+.viewerCounter {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  font-weight: 850;
 }
 
-.app.chatOnlyMode {
-  grid-template-columns: 1fr;
+.viewerCounter strong {
+  font-weight: 950;
 }
 
-.app.chatOnlyMode .sidebar {
-  display: none;
-}
-
-.app.chatOnlyMode .chat {
-  width: 100vw;
+.viewerCounterError {
+  color: #fecaca;
 }

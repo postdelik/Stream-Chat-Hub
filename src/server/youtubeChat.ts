@@ -1,26 +1,9 @@
-import { randomUUID } from "crypto";
 import type {
   ChatMessage,
   ChatSource,
+  YouTubeAuthState,
   YouTubeConnectionStatus,
 } from "../shared/types";
-import type { MessageHub } from "./messageHub";
-
-type YouTubeVideoResponse = {
-  items?: Array<{
-    id?: string;
-    snippet?: {
-      title?: string;
-      channelTitle?: string;
-    };
-    liveStreamingDetails?: {
-      activeLiveChatId?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
-};
 
 type YouTubeLiveChatResponse = {
   nextPageToken?: string;
@@ -33,23 +16,31 @@ type YouTubeLiveChatResponse = {
     };
     authorDetails?: {
       displayName?: string;
+      channelId?: string;
     };
   }>;
-  error?: {
-    message?: string;
-  };
 };
 
-type RunningYouTubeSource = {
-  source: ChatSource;
-  videoId: string;
-  liveChatId: string;
-  title: string;
-  nextPageToken: string | null;
-  seenMessageIds: Set<string>;
-  timer: NodeJS.Timeout | null;
-  stopped: boolean;
+type YouTubeVideoResponse = {
+  items?: Array<{
+    id: string;
+    liveStreamingDetails?: {
+      activeLiveChatId?: string;
+    };
+  }>;
 };
+
+type YouTubeConnectedSource = {
+  id: string;
+  platform: "youtube";
+  channelName: string;
+  connected: boolean;
+  error: string | null;
+};
+
+function createMessageId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 function extractYouTubeVideoId(input: string) {
   const value = input.trim();
@@ -65,48 +56,72 @@ function extractYouTubeVideoId(input: string) {
   try {
     const url = new URL(value);
 
-    const videoFromQuery = url.searchParams.get("v");
-
-    if (videoFromQuery && /^[a-zA-Z0-9_-]{11}$/.test(videoFromQuery)) {
-      return videoFromQuery;
+    if (url.hostname.includes("youtu.be")) {
+      return url.pathname.replace("/", "").slice(0, 11);
     }
 
-    const pathParts = url.pathname.split("/").filter(Boolean);
+    const videoId = url.searchParams.get("v");
 
-    if (url.hostname.includes("youtu.be") && pathParts[0]) {
-      return pathParts[0];
+    if (videoId) {
+      return videoId.slice(0, 11);
     }
 
-    const liveIndex = pathParts.indexOf("live");
+    const liveMatch = url.pathname.match(/\/live\/([a-zA-Z0-9_-]{11})/);
 
-    if (liveIndex >= 0 && pathParts[liveIndex + 1]) {
-      return pathParts[liveIndex + 1];
+    if (liveMatch?.[1]) {
+      return liveMatch[1];
     }
 
-    const shortsIndex = pathParts.indexOf("shorts");
+    const shortsMatch = url.pathname.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
 
-    if (shortsIndex >= 0 && pathParts[shortsIndex + 1]) {
-      return pathParts[shortsIndex + 1];
+    if (shortsMatch?.[1]) {
+      return shortsMatch[1];
     }
+
+    return "";
   } catch {
-    // Это не ссылка, попробуем использовать строку как video id.
+    return "";
   }
-
-  return value;
 }
 
-function buildUrl(baseUrl: string, params: Record<string, string>) {
-  const url = new URL(baseUrl);
+async function fetchJson<T>(url: string, accessToken: string): Promise<T> {
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`YouTube API error ${response.status}: ${text}`);
   }
 
-  return url.toString();
+  return (await response.json()) as T;
+}
+
+async function getLiveChatId(videoId: string, accessToken: string) {
+  const params = new URLSearchParams({
+    part: "liveStreamingDetails",
+    id: videoId,
+  });
+
+  const data = await fetchJson<YouTubeVideoResponse>(
+    `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`,
+    accessToken
+  );
+
+  const liveChatId = data.items?.[0]?.liveStreamingDetails?.activeLiveChatId;
+
+  if (!liveChatId) {
+    throw new Error("У этого YouTube-видео нет активного live-чата");
+  }
+
+  return liveChatId;
 }
 
 export class YouTubeChatClient {
-  private readonly runningSources = new Map<string, RunningYouTubeSource>();
+  private timers = new Map<string, NodeJS.Timeout>();
+  private nextPageTokens = new Map<string, string>();
 
   private status: YouTubeConnectionStatus = {
     connected: false,
@@ -114,22 +129,16 @@ export class YouTubeChatClient {
     error: null,
   };
 
-  constructor(private readonly messageHub: MessageHub) {}
+  constructor(private readonly onMessage: (message: ChatMessage) => void) {}
 
-  getStatus(): YouTubeConnectionStatus {
-    return {
-      connected: this.status.connected,
-      sources: this.status.sources.map((source) => ({ ...source })),
-      error: this.status.error,
-    };
+  getStatus() {
+    return this.status;
   }
 
-  async connect(apiKey: string, sourcesInput: ChatSource[]) {
+  async connect(sources: ChatSource[], auth?: YouTubeAuthState | null) {
     await this.disconnect();
 
-    const apiKeyValue = apiKey.trim();
-
-    const youtubeSources = sourcesInput.filter(
+    const youtubeSources = sources.filter(
       (source) => source.enabled && source.platform === "youtube"
     );
 
@@ -140,147 +149,100 @@ export class YouTubeChatClient {
         error: null,
       };
 
-      return this.getStatus();
+      return this.status;
     }
 
-    if (!apiKeyValue) {
+    if (!auth?.enabled || !auth.accessToken) {
       this.status = {
         connected: false,
         sources: youtubeSources.map((source) => ({
-          sourceId: source.id,
-          input: source.channelName,
-          videoId: null,
-          liveChatId: null,
-          title: null,
+          id: source.id,
+          platform: "youtube",
+          channelName: source.channelName,
           connected: false,
-          error: "Нужен YouTube API key",
+          error: "Требуется YouTube Login",
         })),
-        error: "Нужен YouTube API key",
+        error: "Требуется YouTube Login",
       };
 
-      return this.getStatus();
+      return this.status;
     }
 
-    const sourceStatuses: YouTubeConnectionStatus["sources"] = [];
+    const connectedSources: YouTubeConnectedSource[] = [];
 
     for (const source of youtubeSources) {
       const videoId = extractYouTubeVideoId(source.channelName);
 
       if (!videoId) {
-        sourceStatuses.push({
-          sourceId: source.id,
-          input: source.channelName,
-          videoId: null,
-          liveChatId: null,
-          title: null,
+        connectedSources.push({
+          id: source.id,
+          platform: "youtube",
+          channelName: source.channelName,
           connected: false,
-          error: "Не удалось определить YouTube video id",
+          error: "Не удалось определить YouTube videoId",
         });
 
         continue;
       }
 
       try {
-        const videoUrl = buildUrl("https://www.googleapis.com/youtube/v3/videos", {
-          key: apiKeyValue,
-          id: videoId,
-          part: "snippet,liveStreamingDetails",
-        });
+        console.log("[YOUTUBE] Connecting source:", source.channelName);
+        console.log("[YOUTUBE] Video ID:", videoId);
 
-        const videoResponse = await fetch(videoUrl);
-        const videoData = (await videoResponse.json()) as YouTubeVideoResponse;
+        const liveChatId = await getLiveChatId(videoId, auth.accessToken);
 
-        if (!videoResponse.ok) {
-          sourceStatuses.push({
-            sourceId: source.id,
-            input: source.channelName,
-            videoId,
-            liveChatId: null,
-            title: null,
-            connected: false,
-            error: videoData.error?.message || "YouTube API не вернул данные по видео",
-          });
+        console.log("[YOUTUBE] Live chat ID:", liveChatId);
 
-          continue;
-        }
-
-        const video = videoData.items?.[0];
-        const liveChatId = video?.liveStreamingDetails?.activeLiveChatId || "";
-        const title = video?.snippet?.title || video?.snippet?.channelTitle || videoId;
-
-        if (!liveChatId) {
-          sourceStatuses.push({
-            sourceId: source.id,
-            input: source.channelName,
-            videoId,
-            liveChatId: null,
-            title,
-            connected: false,
-            error:
-              "У видео нет активного live chat. Возможно, стрим не идёт или чат выключен.",
-          });
-
-          continue;
-        }
-
-        const runningSource: RunningYouTubeSource = {
-          source,
-          videoId,
-          liveChatId,
-          title,
-          nextPageToken: null,
-          seenMessageIds: new Set<string>(),
-          timer: null,
-          stopped: false,
-        };
-
-        this.runningSources.set(source.id, runningSource);
-
-        sourceStatuses.push({
-          sourceId: source.id,
-          input: source.channelName,
-          videoId,
-          liveChatId,
-          title,
+        connectedSources.push({
+          id: source.id,
+          platform: "youtube",
+          channelName: videoId,
           connected: true,
           error: null,
         });
 
-        this.pollSource(apiKeyValue, runningSource, true);
-      } catch (error) {
-        sourceStatuses.push({
+        this.pollLiveChat({
           sourceId: source.id,
-          input: source.channelName,
           videoId,
-          liveChatId: null,
-          title: null,
+          liveChatId,
+          accessToken: auth.accessToken,
+        });
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Ошибка YouTube подключения";
+
+        console.error("[YOUTUBE ERROR]", errorMessage);
+
+        connectedSources.push({
+          id: source.id,
+          platform: "youtube",
+          channelName: source.channelName,
           connected: false,
-          error: error instanceof Error ? error.message : "Ошибка подключения YouTube",
+          error: errorMessage,
         });
       }
     }
 
-    const connected = sourceStatuses.some((source) => source.connected);
+    const connected = connectedSources.some((source) => source.connected);
+    const firstError =
+      connectedSources.find((source) => source.error)?.error ?? null;
 
     this.status = {
       connected,
-      sources: sourceStatuses,
-      error: connected ? null : "Нет подключённых YouTube-источников",
+      sources: connectedSources,
+      error: connected ? null : firstError,
     };
 
-    return this.getStatus();
+    return this.status;
   }
 
   async disconnect() {
-    for (const runningSource of this.runningSources.values()) {
-      runningSource.stopped = true;
-
-      if (runningSource.timer) {
-        clearTimeout(runningSource.timer);
-      }
+    for (const timer of this.timers.values()) {
+      clearTimeout(timer);
     }
 
-    this.runningSources.clear();
+    this.timers.clear();
+    this.nextPageTokens.clear();
 
     this.status = {
       connected: false,
@@ -288,89 +250,77 @@ export class YouTubeChatClient {
       error: null,
     };
 
-    return this.getStatus();
+    return this.status;
   }
 
-  private async pollSource(
-    apiKey: string,
-    runningSource: RunningYouTubeSource,
-    skipExistingMessages: boolean
-  ) {
-    if (runningSource.stopped) {
-      return;
-    }
+  private pollLiveChat({
+    sourceId,
+    videoId,
+    liveChatId,
+    accessToken,
+  }: {
+    sourceId: string;
+    videoId: string;
+    liveChatId: string;
+    accessToken: string;
+  }) {
+    const run = async () => {
+      try {
+        const params = new URLSearchParams({
+          part: "snippet,authorDetails",
+          liveChatId,
+        });
 
-    try {
-      const params: Record<string, string> = {
-        key: apiKey,
-        liveChatId: runningSource.liveChatId,
-        part: "snippet,authorDetails",
-        maxResults: "200",
-      };
+        const pageToken = this.nextPageTokens.get(sourceId);
 
-      if (runningSource.nextPageToken) {
-        params.pageToken = runningSource.nextPageToken;
-      }
-
-      const chatUrl = buildUrl(
-        "https://www.googleapis.com/youtube/v3/liveChat/messages",
-        params
-      );
-
-      const response = await fetch(chatUrl);
-      const data = (await response.json()) as YouTubeLiveChatResponse;
-
-      if (!response.ok) {
-        throw new Error(data.error?.message || "YouTube chat request failed");
-      }
-
-      runningSource.nextPageToken = data.nextPageToken || runningSource.nextPageToken;
-
-      const items = data.items || [];
-
-      for (const item of items) {
-        const messageId = item.id || randomUUID();
-
-        if (runningSource.seenMessageIds.has(messageId)) {
-          continue;
+        if (pageToken) {
+          params.set("pageToken", pageToken);
         }
 
-        runningSource.seenMessageIds.add(messageId);
+        const data = await fetchJson<YouTubeLiveChatResponse>(
+          `https://www.googleapis.com/youtube/v3/liveChat/messages?${params.toString()}`,
+          accessToken
+        );
 
-        if (skipExistingMessages) {
-          continue;
+        if (data.nextPageToken) {
+          this.nextPageTokens.set(sourceId, data.nextPageToken);
         }
 
-        const text = item.snippet?.displayMessage || "";
-        const authorName = item.authorDetails?.displayName || "YouTube Viewer";
+        for (const item of data.items || []) {
+          const text = item.snippet?.displayMessage || "";
 
-        if (!text) {
-          continue;
+          if (!text) {
+            continue;
+          }
+
+          const authorName = item.authorDetails?.displayName || "unknown";
+
+          console.log(`[YOUTUBE MESSAGE] ${authorName}: ${text}`);
+
+          this.onMessage({
+            id: item.id || createMessageId(),
+            platform: "youtube",
+            channelName: videoId,
+            authorName,
+            text,
+            timestamp: item.snippet?.publishedAt
+              ? new Date(item.snippet.publishedAt).getTime()
+              : Date.now(),
+          });
         }
 
-        const message: ChatMessage = {
-          id: randomUUID(),
-          platform: "youtube",
-          channelName: runningSource.title,
-          authorName,
-          text,
-          timestamp: item.snippet?.publishedAt
-            ? new Date(item.snippet.publishedAt).getTime()
-            : Date.now(),
-        };
+        const delay = Math.max(data.pollingIntervalMillis || 5000, 2000);
 
-        this.messageHub.addMessage(message);
+        const timer = setTimeout(run, delay);
+        this.timers.set(sourceId, timer);
+      } catch (error) {
+        console.error("[YOUTUBE POLL ERROR]", error);
+
+        const timer = setTimeout(run, 10000);
+        this.timers.set(sourceId, timer);
       }
+    };
 
-      const delay = Math.max(1000, data.pollingIntervalMillis || 3000);
-
-      runningSource.timer = setTimeout(() => {
-        this.pollSource(apiKey, runningSource, false);
-      }, delay);
-    } catch {
-      runningSource.timer = setTimeout(() => {
-        this.pollSource(apiKey, runningSource, false);
-      }, 5000);
-    }
+    void run();
   }
 }

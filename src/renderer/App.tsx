@@ -6,14 +6,15 @@ import type {
   OverlayPosition,
   OverlaySettings,
   SafeTwitchAuthState,
+  SafeYouTubeAuthState,
   TwitchConnectionStatus,
+  TwitchViewersStatus,
   YouTubeConnectionStatus,
 } from "../shared/types";
 import { languageStorageKey, overlayUrl } from "./constants";
 import { translations, type AppLanguage } from "./i18n/translations";
 import {
   createSourceId,
-  getSourcePlatformLabel,
   normalizeSourceInput,
   normalizeYouTubeInput,
 } from "./utils/chat";
@@ -31,12 +32,7 @@ type OverlayPreset = "compact" | "standard" | "large" | "textOnly";
 
 function getSavedLanguage(): AppLanguage | null {
   const value = localStorage.getItem(languageStorageKey);
-
-  if (value === "ru" || value === "en") {
-    return value;
-  }
-
-  return null;
+  return value === "ru" || value === "en" ? value : null;
 }
 
 const defaultTwitchStatus: TwitchConnectionStatus = {
@@ -61,6 +57,21 @@ const defaultTwitchAuthStatus: SafeTwitchAuthState = {
   hasToken: false,
 };
 
+const defaultYouTubeAuthStatus: SafeYouTubeAuthState = {
+  enabled: false,
+  scopes: [],
+  expiresAt: null,
+  hasAccessToken: false,
+  hasRefreshToken: false,
+  configured: false,
+};
+
+const defaultTwitchViewersStatus: TwitchViewersStatus = {
+  totalViewers: 0,
+  channels: [],
+  error: null,
+};
+
 export function App() {
   const [language, setLanguage] = useState<AppLanguage | null>(() =>
     getSavedLanguage()
@@ -83,8 +94,6 @@ export function App() {
   const [settingsFilePath] = useState("");
 
   const [sources, setSources] = useState<ChatSource[]>([]);
-  const [youtubeApiKey, setYoutubeApiKey] = useState("");
-
   const [activeAddSourceTab, setActiveAddSourceTab] =
     useState<AddSourceTab>("anonymousTwitch");
 
@@ -96,10 +105,17 @@ export function App() {
   const [twitchAuthStatus, setTwitchAuthStatus] =
     useState<SafeTwitchAuthState>(defaultTwitchAuthStatus);
 
+  const [youtubeAuthStatus, setYouTubeAuthStatus] =
+    useState<SafeYouTubeAuthState>(defaultYouTubeAuthStatus);
+
   const [twitchStatus, setTwitchStatus] =
     useState<TwitchConnectionStatus>(defaultTwitchStatus);
+
   const [youtubeStatus, setYoutubeStatus] =
     useState<YouTubeConnectionStatus>(defaultYouTubeStatus);
+
+  const [twitchViewersStatus, setTwitchViewersStatus] =
+    useState<TwitchViewersStatus>(defaultTwitchViewersStatus);
 
   const [mockOverlayEnabled, setMockOverlayEnabled] = useState(false);
   const [chatActionStatus, setChatActionStatus] = useState("");
@@ -187,10 +203,39 @@ export function App() {
   const appSettings = useMemo<AppSettings>(() => {
     return {
       sources,
-      youtubeApiKey,
+      youtubeApiKey: "",
       overlay: overlaySettings,
     };
-  }, [sources, youtubeApiKey, overlaySettings]);
+  }, [sources, overlaySettings]);
+
+  async function loadSettingsFromServer() {
+    const response = await fetch("http://localhost:3877/settings");
+    const data = (await response.json()) as AppSettings;
+
+    setSources(data.sources || []);
+
+    setOverlayWidth(data.overlay.width);
+    setOverlayHeight(data.overlay.height);
+    setOverlayFontSize(data.overlay.fontSize);
+    setOverlayChatWidth(data.overlay.chatWidth);
+    setOverlayMaxMessages(data.overlay.maxMessages);
+    setOverlayPosition(data.overlay.position);
+
+    setOverlayShowPlatformIcon(data.overlay.showPlatformIcon);
+    setOverlayShowChannelName(data.overlay.showChannelName);
+    setOverlayShowAuthorName(data.overlay.showAuthorName);
+
+    setOverlayBackgroundOpacity(data.overlay.backgroundOpacity);
+    setOverlayBorderRadius(data.overlay.borderRadius);
+    setOverlayMessageGap(data.overlay.messageGap);
+
+    setFilterHideCommands(data.overlay.filters.hideCommands);
+    setFilterHideLinks(data.overlay.filters.hideLinks);
+    setFilterOnlyWords(data.overlay.filters.onlyWords);
+    setFilterHighlightWords(data.overlay.filters.highlightWords);
+
+    return data;
+  }
 
   async function loadTwitchAuthStatus() {
     try {
@@ -200,6 +245,29 @@ export function App() {
       return data;
     } catch {
       return defaultTwitchAuthStatus;
+    }
+  }
+
+  async function loadYouTubeAuthStatus() {
+    try {
+      const response = await fetch("http://localhost:3877/youtube/auth/status");
+      const data = (await response.json()) as SafeYouTubeAuthState;
+      setYouTubeAuthStatus(data);
+      return data;
+    } catch {
+      return defaultYouTubeAuthStatus;
+    }
+  }
+
+  async function loadTwitchViewersStatus() {
+    try {
+      const response = await fetch("http://localhost:3877/twitch/viewers");
+      const data = (await response.json()) as TwitchViewersStatus;
+      setTwitchViewersStatus(data);
+      return data;
+    } catch {
+      setTwitchViewersStatus(defaultTwitchViewersStatus);
+      return defaultTwitchViewersStatus;
     }
   }
 
@@ -221,6 +289,11 @@ export function App() {
 
       if (auth.enabled && auth.hasToken && auth.username) {
         window.clearInterval(timer);
+
+        const settings = await loadSettingsFromServer();
+        await connectChatWithSources(settings.sources || []);
+        await loadTwitchViewersStatus();
+
         setChatActionStatus(`${t("twitchLoginDone")}: ${auth.username}`);
       }
 
@@ -228,6 +301,10 @@ export function App() {
         window.clearInterval(timer);
       }
     }, 1000);
+  }
+
+  function startYouTubeLogin() {
+    setChatActionStatus("YouTube временно скрыт");
   }
 
   async function logoutTwitch() {
@@ -244,10 +321,15 @@ export function App() {
 
       setTwitchAuthStatus(data.auth);
       setTwitchStatus(data.twitchStatus);
+      await loadTwitchViewersStatus();
       setChatActionStatus(t("twitchLogoutDone"));
     } catch {
       setChatActionStatus(t("twitchLogoutFailed"));
     }
+  }
+
+  async function logoutYouTube() {
+    setChatActionStatus("YouTube временно скрыт");
   }
 
   function applyOverlayPreset(preset: OverlayPreset) {
@@ -317,41 +399,6 @@ export function App() {
     setChatActionStatus(t("presetTextOnly"));
   }
 
-  function addSource(platform: ChatSource["platform"], rawChannelName: string) {
-    const channelName = normalizeSourceInput(platform, rawChannelName);
-
-    if (!channelName) {
-      setChatActionStatus(t("enterChannel"));
-      return false;
-    }
-
-    const alreadyExists = sources.some(
-      (source) =>
-        source.platform === platform && source.channelName === channelName
-    );
-
-    if (alreadyExists) {
-      setChatActionStatus(t("sourceAlreadyAdded"));
-      return false;
-    }
-
-    const nextSource: ChatSource = {
-      id: createSourceId(),
-      platform,
-      channelName,
-      enabled: true,
-    };
-
-    setSources((currentSources) => [...currentSources, nextSource]);
-    setChatActionStatus(
-      `${t("sourceAdded")}: ${getSourcePlatformLabel(nextSource.platform)} / ${
-        nextSource.channelName
-      }`
-    );
-
-    return true;
-  }
-
   function addAnonymousTwitchSource() {
     const channelName = normalizeSourceInput("twitch", anonymousTwitchChannelName);
 
@@ -387,69 +434,38 @@ export function App() {
   }
 
   function addAuthTwitchSource() {
-    console.log("[APP] addAuthTwitchSource clicked");
-  const channelName = normalizeSourceInput("twitch", authTwitchChannelName);
-
-  if (!channelName) {
-    setChatActionStatus(t("enterChannel"));
-    return;
+    setChatActionStatus("После Twitch Login канал аккаунта добавляется автоматически");
   }
-
-  const alreadyExists = sources.some(
-    (source) =>
-      source.platform === "twitch" && source.channelName === channelName
-  );
-
-  if (alreadyExists) {
-    setAuthTwitchChannelName("");
-    setChatActionStatus(`Канал уже добавлен, переподключаю Twitch: #${channelName}`);
-    void connectChatWithSources(sources);
-    return;
-  }
-
-  const nextSource: ChatSource = {
-    id: createSourceId(),
-    platform: "twitch",
-    channelName,
-    enabled: true,
-  };
-
-  const nextSources = [...sources, nextSource];
-  console.log("[APP] nextSources", nextSources);
-  setSources(nextSources);
-  setAuthTwitchChannelName("");
-  setChatActionStatus(`Источник добавлен, подключаю Twitch: #${channelName}`);
-
-  void connectChatWithSources(nextSources);
-}
 
   function addYouTubeSource() {
-    setChatActionStatus(t("youtubeSkipped"));
+    const channelName = normalizeYouTubeInput(youtubeInput);
 
-    const normalized = normalizeYouTubeInput(youtubeInput);
-
-    if (!normalized) {
+    if (!channelName) {
+      setChatActionStatus(t("enterChannel"));
       return;
     }
+
+    setChatActionStatus("YouTube временно скрыт");
   }
 
   function removeSource(sourceId: string) {
-    setSources((currentSources) =>
-      currentSources.filter((source) => source.id !== sourceId)
-    );
+    const nextSources = sources.filter((source) => source.id !== sourceId);
+    setSources(nextSources);
+    void connectChatWithSources(nextSources);
   }
 
   function toggleSource(sourceId: string) {
-    setSources((currentSources) =>
-      currentSources.map((source) =>
-        source.id === sourceId
-          ? {
-              ...source,
-              enabled: !source.enabled,
-            }
-          : source
-      )
+    const nextSources = sources.map((source) =>
+      source.id === sourceId
+        ? {
+            ...source,
+            enabled: !source.enabled,
+          }
+        : source
     );
+
+    setSources(nextSources);
+    void connectChatWithSources(nextSources);
   }
 
   async function copyOverlayUrl() {
@@ -493,7 +509,7 @@ export function App() {
     }
   }
 
-  async function connectChat() {
+  async function connectChatWithSources(nextSources: ChatSource[]) {
     try {
       setChatActionStatus(t("connectingSources"));
 
@@ -503,8 +519,8 @@ export function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sources,
-          youtubeApiKey,
+          sources: nextSources,
+          youtubeApiKey: "",
         }),
       });
 
@@ -519,6 +535,7 @@ export function App() {
 
       setTwitchStatus(data.twitchStatus);
       setYoutubeStatus(data.youtubeStatus);
+      await loadTwitchViewersStatus();
 
       if (data.mockStatus) {
         setMockOverlayEnabled(data.mockStatus.running);
@@ -534,119 +551,17 @@ export function App() {
         parts.push(`Login: ${data.twitchStatus.username}`);
       }
 
-      if (data.youtubeStatus.connected) {
-        const connectedCount = data.youtubeStatus.sources.filter(
-          (source) => source.connected
-        ).length;
-
-        parts.push(`YouTube: ${connectedCount}`);
-      }
-
       if (data.mockStatus?.running) {
         parts.push(t("testOverlayPart"));
       }
 
-      if (parts.length === 0) {
-        setChatActionStatus(
-          data.twitchStatus.error ||
-            data.youtubeStatus.error ||
-            t("noActiveSources")
-        );
-        return;
-      }
-
-      setChatActionStatus(`${t("activeSourcesStatus")}: ${parts.join(", ")}`);
-    } catch {
-      setChatActionStatus(t("connectSourcesFailed"));
-    }
-  }
-
-  async function connectChatWithSources(nextSources: ChatSource[]) {
-    try {
-      setChatActionStatus(t("connectingSources"));
-
-      const response = await fetch("http://localhost:3877/chat/connect", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          sources: nextSources,
-          youtubeApiKey,
-        }),
-      });
-
-      const data = (await response.json()) as {
-        ok: boolean;
-        twitchStatus: TwitchConnectionStatus;
-        youtubeStatus: YouTubeConnectionStatus;
-        mockStatus?: {
-          running: boolean;
-        };
-      };
-
-      setTwitchStatus(data.twitchStatus);
-      setYoutubeStatus(data.youtubeStatus);
-
-      if (data.mockStatus) {
-        setMockOverlayEnabled(data.mockStatus.running);
-      }
-
-      if (data.twitchStatus.connected) {
-        setChatActionStatus(
-          `Twitch подключён: ${data.twitchStatus.channelNames
-            .map((name) => `#${name}`)
-            .join(", ")}`
-        );
-        return;
-      }
-
-      if (data.mockStatus?.running) {
-        setChatActionStatus(t("testOverlayEnabled"));
-        return;
-      }
-
       setChatActionStatus(
-        data.twitchStatus.error ||
-          data.youtubeStatus.error ||
-          t("noActiveSources")
+        parts.length > 0
+          ? `${t("activeSourcesStatus")}: ${parts.join(", ")}`
+          : data.twitchStatus.error || t("noActiveSources")
       );
     } catch {
       setChatActionStatus(t("connectSourcesFailed"));
-    }
-  }
-
-  async function disconnectChat() {
-    try {
-      setChatActionStatus(t("disconnectingSources"));
-
-      const response = await fetch("http://localhost:3877/chat/disconnect", {
-        method: "POST",
-      });
-
-      const data = (await response.json()) as {
-        ok: boolean;
-        twitchStatus: TwitchConnectionStatus;
-        youtubeStatus: YouTubeConnectionStatus;
-        mockStatus?: {
-          running: boolean;
-        };
-      };
-
-      setTwitchStatus(data.twitchStatus);
-      setYoutubeStatus(data.youtubeStatus);
-
-      if (data.mockStatus) {
-        setMockOverlayEnabled(data.mockStatus.running);
-      }
-
-      setChatActionStatus(
-        data.mockStatus?.running
-          ? t("sourcesDisconnectedTestKeepsRunning")
-          : t("sourcesDisconnected")
-      );
-    } catch {
-      setChatActionStatus(t("disconnectSourcesFailed"));
     }
   }
 
@@ -658,39 +573,14 @@ export function App() {
 
       setMessages([]);
     } catch {
-      // Nothing dangerous here.
+      // ignore
     }
   }
 
   useEffect(() => {
-    async function loadSettings() {
+    async function loadInitialSettings() {
       try {
-        const response = await fetch("http://localhost:3877/settings");
-        const data = (await response.json()) as AppSettings;
-
-        setSources(data.sources || []);
-        setYoutubeApiKey(data.youtubeApiKey || "");
-
-        setOverlayWidth(data.overlay.width);
-        setOverlayHeight(data.overlay.height);
-        setOverlayFontSize(data.overlay.fontSize);
-        setOverlayChatWidth(data.overlay.chatWidth);
-        setOverlayMaxMessages(data.overlay.maxMessages);
-        setOverlayPosition(data.overlay.position);
-
-        setOverlayShowPlatformIcon(data.overlay.showPlatformIcon);
-        setOverlayShowChannelName(data.overlay.showChannelName);
-        setOverlayShowAuthorName(data.overlay.showAuthorName);
-
-        setOverlayBackgroundOpacity(data.overlay.backgroundOpacity);
-        setOverlayBorderRadius(data.overlay.borderRadius);
-        setOverlayMessageGap(data.overlay.messageGap);
-
-        setFilterHideCommands(data.overlay.filters.hideCommands);
-        setFilterHideLinks(data.overlay.filters.hideLinks);
-        setFilterOnlyWords(data.overlay.filters.onlyWords);
-        setFilterHighlightWords(data.overlay.filters.highlightWords);
-
+        await loadSettingsFromServer();
         setSettingsLoaded(true);
         setSaveStatus(t("settingsLoaded"));
       } catch {
@@ -699,8 +589,10 @@ export function App() {
       }
     }
 
-    loadSettings();
+    loadInitialSettings();
     loadTwitchAuthStatus();
+    loadYouTubeAuthStatus();
+    loadTwitchViewersStatus();
   }, []);
 
   useEffect(() => {
@@ -713,7 +605,7 @@ export function App() {
 
         setMockOverlayEnabled(data.running);
       } catch {
-        // Server may still be waking up.
+        // ignore
       }
     }
 
@@ -761,13 +653,23 @@ export function App() {
   }, [settingsLoaded, appSettings, language]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadTwitchViewersStatus();
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     async function loadStatuses() {
       try {
         const twitchResponse = await fetch("http://localhost:3877/twitch/status");
         const twitchData = (await twitchResponse.json()) as TwitchConnectionStatus;
         setTwitchStatus(twitchData);
       } catch {
-        // Server may still be waking up.
+        // ignore
       }
 
       try {
@@ -776,7 +678,7 @@ export function App() {
           (await youtubeResponse.json()) as YouTubeConnectionStatus;
         setYoutubeStatus(youtubeData);
       } catch {
-        // Server may still be waking up.
+        // ignore
       }
     }
 
@@ -792,10 +694,9 @@ export function App() {
       try {
         const response = await fetch("http://localhost:3877/messages");
         const data = (await response.json()) as ChatMessage[];
-
         setMessages(data.slice(-100));
       } catch {
-        // Server may still be waking up.
+        // ignore
       }
     }
 
@@ -896,6 +797,7 @@ export function App() {
           twitchStatus={twitchStatus}
           twitchAuthStatus={twitchAuthStatus}
           youtubeStatus={youtubeStatus}
+          youtubeAuthStatus={youtubeAuthStatus}
           activeAddSourceTab={activeAddSourceTab}
           setActiveAddSourceTab={setActiveAddSourceTab}
           anonymousTwitchChannelName={anonymousTwitchChannelName}
@@ -904,8 +806,6 @@ export function App() {
           setAuthTwitchChannelName={setAuthTwitchChannelName}
           youtubeInput={youtubeInput}
           setYoutubeInput={setYoutubeInput}
-          youtubeApiKey={youtubeApiKey}
-          setYoutubeApiKey={setYoutubeApiKey}
           chatActionStatus={chatActionStatus}
           toggleSource={toggleSource}
           removeSource={removeSource}
@@ -914,8 +814,8 @@ export function App() {
           addYouTubeSource={addYouTubeSource}
           startTwitchLogin={startTwitchLogin}
           logoutTwitch={logoutTwitch}
-          connectChat={connectChat}
-          disconnectChat={disconnectChat}
+          startYouTubeLogin={startYouTubeLogin}
+          logoutYouTube={logoutYouTube}
         />
 
         <OverlaySettingsSection
@@ -992,6 +892,7 @@ export function App() {
         clearMessages={clearMessages}
         chatOnlyMode={chatOnlyMode}
         onToggleChatOnlyMode={() => setChatOnlyMode((current) => !current)}
+        twitchViewersStatus={twitchViewersStatus}
       />
     </main>
   );

@@ -2,11 +2,11 @@ export type ChatPlatform = "twitch" | "youtube" | "mock";
 
 export type OverlayPosition = "left" | "center" | "right";
 
-export type ChatSource = {
-  id: string;
-  platform: Exclude<ChatPlatform, "mock">;
-  channelName: string;
-  enabled: boolean;
+export type OverlayFilterSettings = {
+  hideCommands: boolean;
+  hideLinks: boolean;
+  onlyWords: string;
+  highlightWords: string;
 };
 
 export type ChatMessage = {
@@ -18,18 +18,12 @@ export type ChatMessage = {
   timestamp: number;
 };
 
-export type OverlayFilters = {
-  hideCommands: boolean;
-  hideLinks: boolean;
-  onlyWords: string;
-  highlightWords: string;
+export type ChatSource = {
+  id: string;
+  platform: Exclude<ChatPlatform, "mock">;
+  channelName: string;
+  enabled: boolean;
 };
-
-/**
- * Оставляем алиас для старого settingsStore.ts.
- * Новый код использует OverlayFilters, старый файл ждёт OverlayFilterSettings.
- */
-export type OverlayFilterSettings = OverlayFilters;
 
 export type OverlaySettings = {
   width: number;
@@ -47,7 +41,7 @@ export type OverlaySettings = {
   borderRadius: number;
   messageGap: number;
 
-  filters: OverlayFilters;
+  filters: OverlayFilterSettings;
 };
 
 export type TwitchAuthState = {
@@ -66,11 +60,29 @@ export type SafeTwitchAuthState = {
   hasToken: boolean;
 };
 
+export type YouTubeAuthState = {
+  enabled: boolean;
+  accessToken: string | null;
+  refreshToken: string | null;
+  scopes: string[];
+  expiresAt: number | null;
+};
+
+export type SafeYouTubeAuthState = {
+  enabled: boolean;
+  scopes: string[];
+  expiresAt: number | null;
+  hasAccessToken: boolean;
+  hasRefreshToken: boolean;
+  configured: boolean;
+};
+
 export type AppSettings = {
   sources: ChatSource[];
   youtubeApiKey: string;
   overlay: OverlaySettings;
   twitchAuth?: TwitchAuthState;
+  youtubeAuth?: YouTubeAuthState;
 };
 
 export type TwitchConnectionStatus = {
@@ -81,23 +93,29 @@ export type TwitchConnectionStatus = {
   username: string | null;
 };
 
-/**
- * Поля сделаны шире, чтобы старый youtubeChat.ts не ломал сборку,
- * даже пока мы YouTube не используем.
- */
-export type YouTubeConnectionSourceStatus = {
-  channelName?: string;
-  sourceId?: string;
-  input?: string;
-  videoId?: string | null;
-  liveChatId?: string | null;
-  title?: string | null;
+export type YouTubeSourceConnectionStatus = {
+  id: string;
+  platform: "youtube";
+  channelName: string;
   connected: boolean;
   error: string | null;
 };
 
 export type YouTubeConnectionStatus = {
   connected: boolean;
-  sources: YouTubeConnectionSourceStatus[];
+  sources: YouTubeSourceConnectionStatus[];
+  error: string | null;
+};
+
+export type TwitchViewerCount = {
+  channelName: string;
+  viewerCount: number;
+  live: boolean;
+  error: string | null;
+};
+
+export type TwitchViewersStatus = {
+  totalViewers: number;
+  channels: TwitchViewerCount[];
   error: string | null;
 };

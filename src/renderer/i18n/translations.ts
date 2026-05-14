@@ -162,6 +162,11 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
       "Twitch и YouTube отключены, тест overlay продолжает работать",
     disconnectSourcesFailed: "Не удалось отключить источники",
     testOverlayPart: "Тест overlay",
+    chatTitle: "Чат",
+    messages: "сообщений",
+    clearChat: "Очистить чат",
+    chatOnlyMode: "Только чат",
+    showSettings: "Настройки",
   },
 
   en: {
@@ -325,5 +330,11 @@ export const translations: Record<AppLanguage, Record<string, string>> = {
       "Twitch and YouTube disconnected, test overlay keeps running",
     disconnectSourcesFailed: "Failed to disconnect sources",
     testOverlayPart: "Test overlay",
+    chatTitle: "Чат",
+    chatTitle: "Chat",
+    messages: "messages",
+    clearChat: "Clear chat",
+    chatOnlyMode: "Chat only",
+    showSettings: "Settings",
   },
 };

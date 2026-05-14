@@ -9,16 +9,23 @@ import type {
   ChatSource,
   OverlaySettings,
   SafeTwitchAuthState,
+  SafeYouTubeAuthState,
   TwitchAuthState,
-  YouTubeConnectionStatus,
+  YouTubeAuthState,
 } from "../shared/types";
 import { TwitchChatClient } from "./twitchChat";
+import { YouTubeChatClient } from "./youtubeChat";
+import { getTwitchViewersStatus } from "./twitchViewers";
 
 const PORT = 3877;
 
 const TWITCH_CLIENT_ID = "18ipdprohcqbx04oykqelu0a3h92mc";
 const TWITCH_REDIRECT_URI = `http://localhost:${PORT}/twitch/auth/callback`;
 const TWITCH_SCOPES = ["chat:read", "chat:edit"];
+
+const YOUTUBE_CLIENT_ID = "ТВОЙ_GOOGLE_OAUTH_CLIENT_ID";
+const YOUTUBE_REDIRECT_URI = `http://localhost:${PORT}/youtube/auth/callback`;
+const YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"];
 
 const settingsDir = path.join(os.homedir(), ".stream-chat-hub");
 const settingsFilePath = path.join(settingsDir, "settings.json");
@@ -55,17 +62,20 @@ const defaultTwitchAuth: TwitchAuthState = {
   expiresAt: null,
 };
 
+const defaultYouTubeAuth: YouTubeAuthState = {
+  enabled: false,
+  accessToken: null,
+  refreshToken: null,
+  scopes: [],
+  expiresAt: null,
+};
+
 const defaultSettings: AppSettings = {
   sources: [],
   youtubeApiKey: "",
   overlay: defaultOverlaySettings,
   twitchAuth: defaultTwitchAuth,
-};
-
-const defaultYouTubeStatus: YouTubeConnectionStatus = {
-  connected: false,
-  sources: [],
-  error: null,
+  youtubeAuth: defaultYouTubeAuth,
 };
 
 let appSettings = loadSettings();
@@ -77,6 +87,10 @@ const appSockets = new Set<any>();
 const overlaySockets = new Set<any>();
 
 const twitchChatClient = new TwitchChatClient((message) => {
+  pushMessage(message);
+});
+
+const youtubeChatClient = new YouTubeChatClient((message) => {
   pushMessage(message);
 });
 
@@ -132,6 +146,10 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
       ...defaultTwitchAuth,
       ...(settings.twitchAuth || {}),
     },
+    youtubeAuth: {
+      ...defaultYouTubeAuth,
+      ...(settings.youtubeAuth || {}),
+    },
   };
 }
 
@@ -145,6 +163,13 @@ function getSafeSettings(settings: AppSettings): AppSettings {
       scopes: settings.twitchAuth?.scopes ?? [],
       expiresAt: settings.twitchAuth?.expiresAt ?? null,
     },
+    youtubeAuth: {
+      enabled: Boolean(settings.youtubeAuth?.enabled),
+      accessToken: null,
+      refreshToken: null,
+      scopes: settings.youtubeAuth?.scopes ?? [],
+      expiresAt: settings.youtubeAuth?.expiresAt ?? null,
+    },
   };
 }
 
@@ -157,6 +182,21 @@ function getSafeTwitchAuthState(): SafeTwitchAuthState {
     scopes: auth.scopes,
     expiresAt: auth.expiresAt,
     hasToken: Boolean(auth.accessToken),
+  };
+}
+
+function getSafeYouTubeAuthState(): SafeYouTubeAuthState {
+  const auth = appSettings.youtubeAuth || defaultYouTubeAuth;
+
+  return {
+    enabled: Boolean(auth.enabled),
+    scopes: auth.scopes,
+    expiresAt: auth.expiresAt,
+    hasAccessToken: Boolean(auth.accessToken),
+    hasRefreshToken: Boolean(auth.refreshToken),
+    configured:
+      Boolean(YOUTUBE_CLIENT_ID) &&
+      YOUTUBE_CLIENT_ID !== "ТВОЙ_GOOGLE_OAUTH_CLIENT_ID",
   };
 }
 
@@ -253,9 +293,7 @@ function makeOverlayHtml() {
   <meta charset="UTF-8" />
   <title>Stream Chat Hub Overlay</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html,
     body {
@@ -506,14 +544,12 @@ function makeOverlayHtml() {
       });
     }
 
-loadSettings();
-loadMessages();
-connectSocket();
-
-setInterval(loadSettings, 1000);
-setInterval(loadMessages, 1000);
+    loadSettings();
+    loadMessages();
+    connectSocket();
 
     setInterval(loadSettings, 1000);
+    setInterval(loadMessages, 1000);
   </script>
 </body>
 </html>`;
@@ -544,13 +580,8 @@ function makeTwitchCallbackHtml() {
       text-align: center;
     }
 
-    .ok {
-      color: #bbf7d0;
-    }
-
-    .error {
-      color: #fecaca;
-    }
+    .ok { color: #bbf7d0; }
+    .error { color: #fecaca; }
   </style>
 </head>
 <body>
@@ -584,9 +615,7 @@ function makeTwitchCallbackHtml() {
 
         const response = await fetch("/twitch/auth/token", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             accessToken,
             scopes: scope.split(" ").filter(Boolean),
@@ -607,13 +636,57 @@ function makeTwitchCallbackHtml() {
         setTimeout(() => {
           window.close();
         }, 1200);
-      } catch (error) {
+      } catch {
         status.className = "error";
         status.textContent = "Ошибка Twitch-входа";
       }
     }
 
     finishAuth();
+  </script>
+</body>
+</html>`;
+}
+
+function makeYouTubeCallbackHtml(success: boolean, message: string) {
+  return `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>YouTube Login</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0f0f1a;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    .card {
+      width: min(520px, calc(100vw - 32px));
+      padding: 24px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      text-align: center;
+    }
+
+    .ok { color: #bbf7d0; }
+    .error { color: #fecaca; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Stream Chat Hub</h1>
+    <p class="${success ? "ok" : "error"}">${message}</p>
+  </div>
+
+  <script>
+    setTimeout(() => {
+      window.close();
+    }, 1400);
   </script>
 </body>
 </html>`;
@@ -650,6 +723,112 @@ function buildTwitchAuthUrl() {
   return `https://id.twitch.tv/oauth2/authorize?${params.toString()}`;
 }
 
+function buildYouTubeAuthUrl() {
+  const params = new URLSearchParams({
+    client_id: YOUTUBE_CLIENT_ID,
+    redirect_uri: YOUTUBE_REDIRECT_URI,
+    response_type: "code",
+    scope: YOUTUBE_SCOPES.join(" "),
+    access_type: "offline",
+    prompt: "consent",
+  });
+
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+async function exchangeYouTubeCode(code: string) {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: YOUTUBE_CLIENT_ID,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: YOUTUBE_REDIRECT_URI,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`YouTube token exchange failed: ${text}`);
+  }
+
+  return (await response.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in: number;
+    scope?: string;
+    token_type: string;
+  };
+}
+
+async function refreshYouTubeToken(auth: YouTubeAuthState) {
+  if (!auth.refreshToken) {
+    return auth;
+  }
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: YOUTUBE_CLIENT_ID,
+      refresh_token: auth.refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`YouTube token refresh failed: ${text}`);
+  }
+
+  const data = (await response.json()) as {
+    access_token: string;
+    expires_in: number;
+    scope?: string;
+    token_type: string;
+  };
+
+  const nextAuth: YouTubeAuthState = {
+    ...auth,
+    enabled: true,
+    accessToken: data.access_token,
+    expiresAt: Date.now() + data.expires_in * 1000,
+    scopes: data.scope ? data.scope.split(" ") : auth.scopes,
+  };
+
+  appSettings.youtubeAuth = nextAuth;
+  saveSettings(appSettings);
+
+  return nextAuth;
+}
+
+async function getUsableYouTubeAuth() {
+  const auth = appSettings.youtubeAuth || defaultYouTubeAuth;
+
+  if (!auth.enabled || !auth.accessToken) {
+    return auth;
+  }
+
+  const expiresAt = auth.expiresAt || 0;
+  const shouldRefresh = expiresAt - Date.now() < 60_000;
+
+  if (!shouldRefresh) {
+    return auth;
+  }
+
+  try {
+    return await refreshYouTubeToken(auth);
+  } catch (error) {
+    console.error("[YOUTUBE AUTH REFRESH ERROR]", error);
+    return auth;
+  }
+}
+
 export async function startLocalServer() {
   const server = Fastify({
     logger: false,
@@ -678,13 +857,12 @@ export async function startLocalServer() {
       ...appSettings,
       ...incomingSettings,
       twitchAuth: appSettings.twitchAuth || defaultTwitchAuth,
+      youtubeAuth: appSettings.youtubeAuth || defaultYouTubeAuth,
     });
 
     saveSettings(appSettings);
 
-    reply.send({
-      ok: true,
-    });
+    reply.send({ ok: true });
   });
 
   server.get("/messages", async () => {
@@ -694,9 +872,7 @@ export async function startLocalServer() {
   server.post("/messages/clear", async () => {
     clearMessages();
 
-    return {
-      ok: true,
-    };
+    return { ok: true };
   });
 
   server.get("/app/ws", { websocket: true }, (connection) => {
@@ -723,126 +899,218 @@ export async function startLocalServer() {
     return twitchChatClient.getStatus();
   });
 
+  server.get("/twitch/viewers", async () => {
+    return getTwitchViewersStatus({
+      sources: appSettings.sources,
+      auth: appSettings.twitchAuth || defaultTwitchAuth,
+      clientId: TWITCH_CLIENT_ID,
+    });
+  });
+
   server.get("/youtube/status", async () => {
-    return defaultYouTubeStatus;
+    return youtubeChatClient.getStatus();
   });
 
   server.get("/twitch/auth/status", async () => {
     return getSafeTwitchAuthState();
   });
 
+  server.get("/youtube/auth/status", async () => {
+    return getSafeYouTubeAuthState();
+  });
+
   server.get("/twitch/auth/start", async (_request, reply) => {
     reply.redirect(buildTwitchAuthUrl());
+  });
+
+  server.get("/youtube/auth/start", async (_request, reply) => {
+    if (
+      !YOUTUBE_CLIENT_ID ||
+      YOUTUBE_CLIENT_ID === "ТВОЙ_GOOGLE_OAUTH_CLIENT_ID"
+    ) {
+      reply.code(400).send({
+        ok: false,
+        error: "YouTube OAuth не настроен",
+      });
+
+      return;
+    }
+
+    reply.redirect(buildYouTubeAuthUrl());
   });
 
   server.get("/twitch/auth/callback", async (_request, reply) => {
     reply.type("text/html").send(makeTwitchCallbackHtml());
   });
 
+  server.get("/youtube/auth/callback", async (request, reply) => {
+    try {
+      const query = request.query as {
+        code?: string;
+        error?: string;
+        error_description?: string;
+      };
+
+      if (query.error) {
+        reply
+          .type("text/html")
+          .send(
+            makeYouTubeCallbackHtml(
+              false,
+              query.error_description || query.error
+            )
+          );
+        return;
+      }
+
+      if (!query.code) {
+        reply
+          .type("text/html")
+          .send(makeYouTubeCallbackHtml(false, "YouTube не вернул code"));
+        return;
+      }
+
+      const token = await exchangeYouTubeCode(query.code);
+
+      appSettings.youtubeAuth = {
+        enabled: true,
+        accessToken: token.access_token,
+        refreshToken:
+          token.refresh_token || appSettings.youtubeAuth?.refreshToken || null,
+        scopes: token.scope ? token.scope.split(" ") : YOUTUBE_SCOPES,
+        expiresAt: Date.now() + token.expires_in * 1000,
+      };
+
+      saveSettings(appSettings);
+
+      console.log("[YOUTUBE AUTH] Login completed", {
+        hasAccessToken: Boolean(appSettings.youtubeAuth.accessToken),
+        hasRefreshToken: Boolean(appSettings.youtubeAuth.refreshToken),
+        scopes: appSettings.youtubeAuth.scopes,
+      });
+
+      reply
+        .type("text/html")
+        .send(
+          makeYouTubeCallbackHtml(
+            true,
+            "YouTube Login готов. Можно закрыть окно."
+          )
+        );
+    } catch (error) {
+      console.error("[YOUTUBE AUTH ERROR]", error);
+
+      reply
+        .type("text/html")
+        .send(makeYouTubeCallbackHtml(false, "Ошибка YouTube Login"));
+    }
+  });
+
   server.post("/twitch/auth/token", async (request, reply) => {
-  try {
-    console.log("[TWITCH AUTH TOKEN] Получен запрос сохранения токена");
+    try {
+      console.log("[TWITCH AUTH TOKEN] Получен запрос сохранения токена");
 
-    const body = request.body as {
-      accessToken?: string;
-      scopes?: string[];
-    };
+      const body = request.body as {
+        accessToken?: string;
+        scopes?: string[];
+      };
 
-    const accessToken =
-      typeof body.accessToken === "string" ? body.accessToken.trim() : "";
+      const accessToken =
+        typeof body.accessToken === "string" ? body.accessToken.trim() : "";
 
-    if (!accessToken) {
-      reply.code(400).send({
-        ok: false,
-        error: "Access token пустой",
+      if (!accessToken) {
+        reply.code(400).send({
+          ok: false,
+          error: "Access token пустой",
+        });
+
+        return;
+      }
+
+      const tokenInfo = await validateTwitchToken(accessToken);
+
+      console.log("[TWITCH AUTH TOKEN] Token info:", {
+        client_id: tokenInfo.client_id,
+        login: tokenInfo.login,
+        scopes: tokenInfo.scopes,
+        expires_in: tokenInfo.expires_in,
       });
 
-      return;
-    }
+      if (tokenInfo.client_id !== TWITCH_CLIENT_ID) {
+        reply.code(400).send({
+          ok: false,
+          error: "Token выдан для другого Twitch Client ID",
+        });
 
-    const tokenInfo = await validateTwitchToken(accessToken);
+        return;
+      }
 
-    console.log("[TWITCH AUTH TOKEN] Token info:", {
-      client_id: tokenInfo.client_id,
-      login: tokenInfo.login,
-      scopes: tokenInfo.scopes,
-      expires_in: tokenInfo.expires_in,
-    });
+      const scopes = Array.isArray(tokenInfo.scopes)
+        ? tokenInfo.scopes
+        : body.scopes || [];
 
-    if (tokenInfo.client_id !== TWITCH_CLIENT_ID) {
-      reply.code(400).send({
-        ok: false,
-        error: "Token выдан для другого Twitch Client ID",
-      });
+      const expiresAt = Date.now() + tokenInfo.expires_in * 1000;
 
-      return;
-    }
+      appSettings.twitchAuth = {
+        enabled: true,
+        username: tokenInfo.login,
+        accessToken,
+        scopes,
+        expiresAt,
+      };
 
-    const scopes = Array.isArray(tokenInfo.scopes)
-      ? tokenInfo.scopes
-      : body.scopes || [];
+      const ownChannelName = normalizeTwitchChannelName(tokenInfo.login);
 
-    const expiresAt = Date.now() + tokenInfo.expires_in * 1000;
-
-    appSettings.twitchAuth = {
-      enabled: true,
-      username: tokenInfo.login,
-      accessToken,
-      scopes,
-      expiresAt,
-    };
-const ownChannelName = normalizeTwitchChannelName(tokenInfo.login);
-
-const hasOwnTwitchSource = appSettings.sources.some(
-  (source) =>
-    source.platform === "twitch" &&
-    source.channelName === ownChannelName
-);
-
-if (!hasOwnTwitchSource) {
-  appSettings.sources = [
-    ...appSettings.sources,
-    {
-      id: createMessageId(),
-      platform: "twitch",
-      channelName: ownChannelName,
-      enabled: true,
-    },
-  ];
-
-  console.log("[TWITCH AUTH TOKEN] Auto added own channel:", ownChannelName);
-}
-    saveSettings(appSettings);
-
-    const twitchChannelNames = getEnabledTwitchChannelNames(appSettings.sources);
-
-    console.log("[TWITCH AUTH TOKEN] Enabled Twitch channels:", twitchChannelNames);
-
-    let twitchStatus = twitchChatClient.getStatus();
-
-    if (twitchChannelNames.length > 0) {
-      console.log("[TWITCH AUTH TOKEN] Auto reconnect after login");
-
-      twitchStatus = await twitchChatClient.connect(
-        twitchChannelNames,
-        appSettings.twitchAuth
+      const hasOwnTwitchSource = appSettings.sources.some(
+        (source) =>
+          source.platform === "twitch" && source.channelName === ownChannelName
       );
+
+      if (!hasOwnTwitchSource) {
+        appSettings.sources = [
+          ...appSettings.sources,
+          {
+            id: createMessageId(),
+            platform: "twitch",
+            channelName: ownChannelName,
+            enabled: true,
+          },
+        ];
+
+        console.log("[TWITCH AUTH TOKEN] Auto added own channel:", ownChannelName);
+      }
+
+      saveSettings(appSettings);
+
+      const twitchChannelNames = getEnabledTwitchChannelNames(appSettings.sources);
+
+      console.log("[TWITCH AUTH TOKEN] Enabled Twitch channels:", twitchChannelNames);
+
+      let twitchStatus = twitchChatClient.getStatus();
+
+      if (twitchChannelNames.length > 0) {
+        console.log("[TWITCH AUTH TOKEN] Auto reconnect after login");
+
+        twitchStatus = await twitchChatClient.connect(
+          twitchChannelNames,
+          appSettings.twitchAuth
+        );
+      }
+
+      reply.send({
+        ok: true,
+        auth: getSafeTwitchAuthState(),
+        twitchStatus,
+      });
+    } catch (error) {
+      console.error("[TWITCH AUTH TOKEN ERROR]", error);
+
+      reply.code(400).send({
+        ok: false,
+        error: "Не удалось проверить Twitch token",
+      });
     }
-
-    reply.send({
-      ok: true,
-      auth: getSafeTwitchAuthState(),
-      twitchStatus,
-    });
-  } catch (error) {
-    console.error("[TWITCH AUTH TOKEN ERROR]", error);
-
-    reply.code(400).send({
-      ok: false,
-      error: "Не удалось проверить Twitch token",
-    });
-  }
-});
+  });
 
   server.post("/twitch/auth/logout", async () => {
     appSettings.twitchAuth = {
@@ -857,6 +1125,22 @@ if (!hasOwnTwitchSource) {
       ok: true,
       auth: getSafeTwitchAuthState(),
       twitchStatus: twitchChatClient.getStatus(),
+    };
+  });
+
+  server.post("/youtube/auth/logout", async () => {
+    appSettings.youtubeAuth = {
+      ...defaultYouTubeAuth,
+    };
+
+    saveSettings(appSettings);
+
+    await youtubeChatClient.disconnect();
+
+    return {
+      ok: true,
+      auth: getSafeYouTubeAuthState(),
+      youtubeStatus: youtubeChatClient.getStatus(),
     };
   });
 
@@ -878,39 +1162,43 @@ if (!hasOwnTwitchSource) {
 
     const twitchChannelNames = getEnabledTwitchChannelNames(appSettings.sources);
     const twitchAuth = appSettings.twitchAuth || defaultTwitchAuth;
+    const youtubeAuth = await getUsableYouTubeAuth();
 
     console.log("[CHAT CONNECT]");
-console.log("[TWITCH CHANNELS]", twitchChannelNames);
-console.log("[TWITCH AUTH]", {
-  enabled: twitchAuth.enabled,
-  username: twitchAuth.username,
-  hasToken: Boolean(twitchAuth.accessToken),
-  scopes: twitchAuth.scopes,
-  expiresAt: twitchAuth.expiresAt,
-});
+    console.log("[TWITCH CHANNELS]", twitchChannelNames);
+    console.log("[TWITCH AUTH]", {
+      enabled: twitchAuth.enabled,
+      username: twitchAuth.username,
+      hasToken: Boolean(twitchAuth.accessToken),
+      scopes: twitchAuth.scopes,
+    });
 
-const twitchStatus = await twitchChatClient.connect(
-  twitchChannelNames,
-  twitchAuth.enabled ? twitchAuth : null
-);
+    const twitchStatus = await twitchChatClient.connect(
+      twitchChannelNames,
+      twitchAuth.enabled ? twitchAuth : null
+    );
 
-console.log("[TWITCH STATUS AFTER CONNECT]", twitchStatus);
+    const youtubeStatus = await youtubeChatClient.connect(
+      appSettings.sources,
+      youtubeAuth.enabled ? youtubeAuth : null
+    );
 
     return {
       ok: true,
       twitchStatus,
-      youtubeStatus: defaultYouTubeStatus,
+      youtubeStatus,
       mockStatus: getMockStatus(),
     };
   });
 
   server.post("/chat/disconnect", async () => {
     const twitchStatus = await twitchChatClient.disconnect();
+    const youtubeStatus = await youtubeChatClient.disconnect();
 
     return {
       ok: true,
       twitchStatus,
-      youtubeStatus: defaultYouTubeStatus,
+      youtubeStatus,
       mockStatus: getMockStatus(),
     };
   });

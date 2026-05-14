@@ -1,5 +1,5 @@
 import path from "node:path";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, shell } from "electron";
 import { startLocalServer } from "../server/localServer";
 
 let mainWindow: BrowserWindow | null = null;
@@ -7,18 +7,37 @@ let mainWindow: BrowserWindow | null = null;
 const isDev = !app.isPackaged;
 
 async function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1100,
-    minHeight: 700,
-    backgroundColor: "#080714",
-    show: false,
-    icon: path.join(app.getAppPath(), "build", "icon.ico"),
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
+mainWindow = new BrowserWindow({
+  width: 1200,
+  height: 800,
+  minWidth: 420,
+  minHeight: 520,
+  backgroundColor: "#080714",
+  show: false,
+  icon: path.join(app.getAppPath(), "build", "icon.ico"),
+  webPreferences: {
+    nodeIntegration: false,
+    contextIsolation: true,
+  },
+});
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+
+    return {
+      action: "deny",
+    };
+  });
+
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (
+      url.startsWith("https://accounts.google.com") ||
+      url.startsWith("https://youtube.com") ||
+      url.startsWith("https://www.youtube.com")
+    ) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
   });
 
   mainWindow.once("ready-to-show", () => {

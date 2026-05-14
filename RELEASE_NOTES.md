@@ -1,25 +1,43 @@
-# Stream Chat Hub v0.1.5
-
-## 🇬🇧 English
-
-### Added
-- Chat-only mode for using the app as a clean chat window after setup
-- Button to hide or show the settings sidebar
-- Full-screen chat layout when chat-only mode is enabled
-
-### Changed
-- Improved renderer structure after component refactor
-- Updated app version to 0.1.5
+# Stream Chat Hub v0.2.1
 
 ---
 
-## 🇷🇺 Русский
+# English
 
-### Добавлено
-- Режим «Только чат» для использования приложения как чистого окна чата после настройки
-- Кнопка скрытия и показа панели настроек
-- Полноэкранный layout чата при включённом режиме «Только чат»
+## Added
+- Twitch viewer counter
+- Chat-only vertical window support
+- Better compact layout for narrow windows
 
-### Изменено
-- Улучшена структура renderer после рефакторинга компонентов
-- Обновлена версия приложения до 0.1.5
+## Improved
+- Twitch Login now auto-refreshes sources after login
+- Twitch Login no longer duplicates the channel input
+- Cleaner source tabs after hiding YouTube Login
+- Better chat header layout
+
+## Fixed
+- Active sources count after Twitch Login
+- Missing viewer counter display
+- Translation keys showing as raw text
+- Window minimum width being too large
+
+---
+
+# Русский
+
+## Добавлено
+- Счётчик зрителей Twitch
+- Поддержка вертикального окна в режиме чата
+- Улучшенный компактный layout для узких окон
+
+## Улучшено
+- После Twitch Login источники автоматически обновляются
+- Во вкладке Twitch Login больше не дублируется поле канала
+- Очищены вкладки источников после скрытия YouTube Login
+- Улучшена шапка чата
+
+## Исправлено
+- Количество активных источников после Twitch Login
+- Отображение счётчика зрителей
+- Ключи переводов вместо нормального текста
+- Слишком большая минимальная ширина окна
