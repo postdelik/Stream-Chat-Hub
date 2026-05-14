@@ -1,14 +1,20 @@
 import { randomUUID } from "crypto";
 import { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
+import os from "os";
 import path from "path";
 import type {
   AppSettings,
   ChatSource,
+  OverlayBubbleMediaType,
   OverlayFilterSettings,
   OverlayPosition,
   OverlaySettings,
+  OverlayStyleMode,
 } from "../shared/types";
+
+const SETTINGS_DIR = path.join(os.homedir(), ".stream-chat-hub");
+const SETTINGS_FILE = path.join(SETTINGS_DIR, "settings.json");
 
 const DEFAULT_FILTER_SETTINGS: OverlayFilterSettings = {
   hideCommands: false,
@@ -21,6 +27,7 @@ const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
   width: 800,
   height: 600,
   fontSize: 24,
+  fontFamily: "Inter, Arial, sans-serif",
   chatWidth: 520,
   maxMessages: 12,
   position: "left",
@@ -30,8 +37,14 @@ const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
   showAuthorName: true,
 
   backgroundOpacity: 65,
+  backgroundColor: "#000000",
   borderRadius: 12,
   messageGap: 8,
+
+  styleMode: "messageBubble",
+  showStyleInApp: false,
+  bubbleMediaUrl: "",
+  bubbleMediaType: "none",
 
   filters: DEFAULT_FILTER_SETTINGS,
 };
@@ -44,52 +57,59 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
   const numberValue = Number(value);
-
-  if (!Number.isFinite(numberValue)) {
-    return fallback;
-  }
-
-  return Math.min(max, Math.max(min, numberValue));
+  return Number.isFinite(numberValue)
+    ? Math.min(max, Math.max(min, numberValue))
+    : fallback;
 }
 
 function normalizeBoolean(value: unknown, fallback: boolean) {
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  return fallback;
+  return typeof value === "boolean" ? value : fallback;
 }
 
 function normalizeString(value: unknown, fallback = "") {
-  if (typeof value !== "string") {
-    return fallback;
-  }
+  return typeof value === "string" ? value : fallback;
+}
 
-  return value;
+function normalizeHexColor(value: unknown, fallback = "#000000") {
+  if (typeof value !== "string") return fallback;
+  return /^#[0-9a-fA-F]{6}$/.test(value.trim()) ? value.trim() : fallback;
 }
 
 function normalizePosition(value: unknown): OverlayPosition {
-  if (value === "center" || value === "right" || value === "left") {
+  return value === "center" || value === "right" || value === "left"
+    ? value
+    : "left";
+}
+
+function normalizeStyleMode(value: unknown): OverlayStyleMode {
+  if (
+    value === "color" ||
+    value === "containerBubble" ||
+    value === "messageBubble"
+  ) {
     return value;
   }
 
-  return "left";
+  if (value === "container") return "containerBubble";
+  if (value === "message") return "messageBubble";
+
+  return "messageBubble";
+}
+
+function normalizeBubbleMediaType(value: unknown): OverlayBubbleMediaType {
+  return value === "image" || value === "video" || value === "none"
+    ? value
+    : "none";
 }
 
 function normalizeTwitchChannelName(channelName: unknown) {
-  if (typeof channelName !== "string") {
-    return "";
-  }
-
-  return channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
+  return typeof channelName === "string"
+    ? channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase()
+    : "";
 }
 
 function normalizeYouTubeInput(channelName: unknown) {
-  if (typeof channelName !== "string") {
-    return "";
-  }
-
-  return channelName.trim();
+  return typeof channelName === "string" ? channelName.trim() : "";
 }
 
 function normalizeSource(value: unknown): ChatSource | null {
@@ -105,9 +125,7 @@ function normalizeSource(value: unknown): ChatSource | null {
       ? normalizeTwitchChannelName(data.channelName)
       : normalizeYouTubeInput(data.channelName);
 
-  if (!channelName) {
-    return null;
-  }
+  if (!channelName) return null;
 
   return {
     id: typeof data.id === "string" && data.id ? data.id : randomUUID(),
@@ -118,28 +136,20 @@ function normalizeSource(value: unknown): ChatSource | null {
 }
 
 function normalizeSources(value: unknown): ChatSource[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
+  if (!Array.isArray(value)) return [];
 
   const sources = value.map(normalizeSource).filter(Boolean) as ChatSource[];
   const uniqueSources = new Map<string, ChatSource>();
 
   for (const source of sources) {
-    const key = `${source.platform}:${source.channelName}`;
-
-    if (!uniqueSources.has(key)) {
-      uniqueSources.set(key, source);
-    }
+    uniqueSources.set(`${source.platform}:${source.channelName}`, source);
   }
 
   return Array.from(uniqueSources.values());
 }
 
 function migrateOldTwitchChannelNames(value: unknown): ChatSource[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
+  if (!Array.isArray(value)) return [];
 
   return value
     .map(normalizeTwitchChannelName)
@@ -155,9 +165,7 @@ function migrateOldTwitchChannelNames(value: unknown): ChatSource[] {
 function migrateOldTwitchChannelName(value: unknown): ChatSource[] {
   const channelName = normalizeTwitchChannelName(value);
 
-  if (!channelName) {
-    return [];
-  }
+  if (!channelName) return [];
 
   return [
     {
@@ -194,7 +202,16 @@ export function normalizeOverlaySettings(value: unknown): OverlaySettings {
   return {
     width: clampNumber(data.width, DEFAULT_OVERLAY_SETTINGS.width, 100, 5000),
     height: clampNumber(data.height, DEFAULT_OVERLAY_SETTINGS.height, 100, 5000),
-    fontSize: clampNumber(data.fontSize, DEFAULT_OVERLAY_SETTINGS.fontSize, 10, 120),
+    fontSize: clampNumber(
+      data.fontSize,
+      DEFAULT_OVERLAY_SETTINGS.fontSize,
+      10,
+      120
+    ),
+    fontFamily: normalizeString(
+      data.fontFamily,
+      DEFAULT_OVERLAY_SETTINGS.fontFamily
+    ),
     chatWidth: clampNumber(
       data.chatWidth,
       DEFAULT_OVERLAY_SETTINGS.chatWidth,
@@ -228,6 +245,10 @@ export function normalizeOverlaySettings(value: unknown): OverlaySettings {
       0,
       100
     ),
+    backgroundColor: normalizeHexColor(
+      data.backgroundColor,
+      DEFAULT_OVERLAY_SETTINGS.backgroundColor
+    ),
     borderRadius: clampNumber(
       data.borderRadius,
       DEFAULT_OVERLAY_SETTINGS.borderRadius,
@@ -240,6 +261,14 @@ export function normalizeOverlaySettings(value: unknown): OverlaySettings {
       0,
       40
     ),
+
+    styleMode: normalizeStyleMode(data.styleMode),
+    showStyleInApp: normalizeBoolean(
+      data.showStyleInApp,
+      DEFAULT_OVERLAY_SETTINGS.showStyleInApp
+    ),
+    bubbleMediaUrl: normalizeString(data.bubbleMediaUrl),
+    bubbleMediaType: normalizeBubbleMediaType(data.bubbleMediaType),
 
     filters: normalizeOverlayFilterSettings(data.filters),
   };
@@ -263,60 +292,36 @@ export function normalizeAppSettings(value: unknown): AppSettings {
 
   return {
     sources: migratedSources,
-    youtubeApiKey: typeof data.youtubeApiKey === "string" ? data.youtubeApiKey : "",
-    overlay: normalizeOverlaySettings(data.overlay || DEFAULT_OVERLAY_SETTINGS),
+    youtubeApiKey: normalizeString(data.youtubeApiKey),
+    overlay: normalizeOverlaySettings(data.overlay),
+    twitchAuth: data.twitchAuth,
+    youtubeAuth: data.youtubeAuth,
   };
 }
 
-export class SettingsStore {
-  private readonly settingsDirectory: string;
-  private readonly settingsFilePath: string;
-
-  constructor() {
-    const appDataDirectory =
-      process.env.APPDATA ||
-      process.env.LOCALAPPDATA ||
-      process.env.HOME ||
-      process.cwd();
-
-    this.settingsDirectory = path.join(appDataDirectory, "StreamChatHub");
-    this.settingsFilePath = path.join(this.settingsDirectory, "settings.json");
+export async function loadSettings() {
+  if (!existsSync(SETTINGS_DIR)) {
+    await mkdir(SETTINGS_DIR, { recursive: true });
   }
 
-  getSettingsFilePath() {
-    return this.settingsFilePath;
+  if (!existsSync(SETTINGS_FILE)) {
+    await saveSettings(DEFAULT_APP_SETTINGS);
+    return DEFAULT_APP_SETTINGS;
   }
 
-  async load(): Promise<AppSettings> {
-    if (!existsSync(this.settingsFilePath)) {
-      await this.save(DEFAULT_APP_SETTINGS);
-      return DEFAULT_APP_SETTINGS;
-    }
+  try {
+    const raw = await readFile(SETTINGS_FILE, "utf-8");
+    return normalizeAppSettings(JSON.parse(raw));
+  } catch {
+    return DEFAULT_APP_SETTINGS;
+  }
+}
 
-    try {
-      const rawSettings = await readFile(this.settingsFilePath, "utf-8");
-      const parsedSettings = JSON.parse(rawSettings);
-
-      return normalizeAppSettings(parsedSettings);
-    } catch {
-      await this.save(DEFAULT_APP_SETTINGS);
-      return DEFAULT_APP_SETTINGS;
-    }
+export async function saveSettings(settings: AppSettings) {
+  if (!existsSync(SETTINGS_DIR)) {
+    await mkdir(SETTINGS_DIR, { recursive: true });
   }
 
-  async save(settings: AppSettings) {
-    const normalizedSettings = normalizeAppSettings(settings);
-
-    await mkdir(this.settingsDirectory, {
-      recursive: true,
-    });
-
-    await writeFile(
-      this.settingsFilePath,
-      JSON.stringify(normalizedSettings, null, 2),
-      "utf-8"
-    );
-
-    return normalizedSettings;
-  }
+  const normalized = normalizeAppSettings(settings);
+  await writeFile(SETTINGS_FILE, JSON.stringify(normalized, null, 2), "utf-8");
 }

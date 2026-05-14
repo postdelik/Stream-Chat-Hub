@@ -3,10 +3,12 @@ import path from "node:path";
 import os from "node:os";
 import Fastify from "fastify";
 import websocket from "@fastify/websocket";
+import multipart from "@fastify/multipart";
 import type {
   AppSettings,
   ChatMessage,
   ChatSource,
+  OverlayBubbleMediaType,
   OverlaySettings,
   SafeTwitchAuthState,
   SafeYouTubeAuthState,
@@ -29,11 +31,22 @@ const YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.readonly"];
 
 const settingsDir = path.join(os.homedir(), ".stream-chat-hub");
 const settingsFilePath = path.join(settingsDir, "settings.json");
+const overlayAssetsDir = path.join(settingsDir, "overlay-assets");
+
+const allowedOverlayAssetExtensions = new Set([
+  ".png",
+  ".webp",
+  ".gif",
+  ".mp4",
+  ".webm",
+  ".mov",
+]);
 
 const defaultOverlaySettings: OverlaySettings = {
   width: 800,
   height: 600,
   fontSize: 24,
+  fontFamily: "Inter, Arial, sans-serif",
   chatWidth: 520,
   maxMessages: 12,
   position: "left",
@@ -43,8 +56,14 @@ const defaultOverlaySettings: OverlaySettings = {
   showAuthorName: true,
 
   backgroundOpacity: 65,
+  backgroundColor: "#000000",
   borderRadius: 12,
   messageGap: 8,
+
+styleMode: "messageBubble",
+showStyleInApp: false,
+bubbleMediaUrl: "",
+bubbleMediaType: "none",
 
   filters: {
     hideCommands: false,
@@ -86,13 +105,8 @@ let mockRunning = false;
 const appSockets = new Set<any>();
 const overlaySockets = new Set<any>();
 
-const twitchChatClient = new TwitchChatClient((message) => {
-  pushMessage(message);
-});
-
-const youtubeChatClient = new YouTubeChatClient((message) => {
-  pushMessage(message);
-});
+const twitchChatClient = new TwitchChatClient((message) => pushMessage(message));
+const youtubeChatClient = new YouTubeChatClient((message) => pushMessage(message));
 
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -100,10 +114,41 @@ function createMessageId() {
 
 function ensureSettingsDir() {
   if (!fs.existsSync(settingsDir)) {
-    fs.mkdirSync(settingsDir, {
-      recursive: true,
-    });
+    fs.mkdirSync(settingsDir, { recursive: true });
   }
+}
+
+function ensureOverlayAssetsDir() {
+  if (!fs.existsSync(overlayAssetsDir)) {
+    fs.mkdirSync(overlayAssetsDir, { recursive: true });
+  }
+}
+
+function getOverlayMediaType(fileName: string): OverlayBubbleMediaType {
+  const ext = path.extname(fileName).toLowerCase();
+
+  if (ext === ".png" || ext === ".webp" || ext === ".gif") {
+    return "image";
+  }
+
+  if (ext === ".mp4" || ext === ".webm" || ext === ".mov") {
+    return "video";
+  }
+
+  return "none";
+}
+
+function getContentType(fileName: string) {
+  const ext = path.extname(fileName).toLowerCase();
+
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".mp4") return "video/mp4";
+  if (ext === ".webm") return "video/webm";
+  if (ext === ".mov") return "video/quicktime";
+
+  return "application/octet-stream";
 }
 
 function loadSettings(): AppSettings {
@@ -126,7 +171,11 @@ function loadSettings(): AppSettings {
 
 function saveSettings(settings: AppSettings) {
   ensureSettingsDir();
-  fs.writeFileSync(settingsFilePath, JSON.stringify(settings, null, 2), "utf-8");
+  fs.writeFileSync(
+    settingsFilePath,
+    JSON.stringify(normalizeSettings(settings), null, 2),
+    "utf-8"
+  );
 }
 
 function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
@@ -137,6 +186,15 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
     overlay: {
       ...defaultOverlaySettings,
       ...(settings.overlay || {}),
+      fontFamily: settings.overlay?.fontFamily || defaultOverlaySettings.fontFamily,
+      backgroundColor:
+        typeof settings.overlay?.backgroundColor === "string"
+          ? settings.overlay.backgroundColor
+          : defaultOverlaySettings.backgroundColor,
+      styleMode: settings.overlay?.styleMode || "messageBubble",
+showStyleInApp: Boolean(settings.overlay?.showStyleInApp),
+bubbleMediaUrl: settings.overlay?.bubbleMediaUrl || "",
+bubbleMediaType: settings.overlay?.bubbleMediaType || "none",
       filters: {
         ...defaultOverlaySettings.filters,
         ...(settings.overlay?.filters || {}),
@@ -239,9 +297,7 @@ function clearMessages() {
 }
 
 function startMockMessages() {
-  if (mockTimer) {
-    return;
-  }
+  if (mockTimer) return;
 
   mockRunning = true;
 
@@ -281,9 +337,7 @@ function stopMockMessages() {
 }
 
 function getMockStatus() {
-  return {
-    running: mockRunning,
-  };
+  return { running: mockRunning };
 }
 
 function makeOverlayHtml() {
@@ -321,6 +375,7 @@ function makeOverlayHtml() {
     }
 
     #chat {
+      position: relative;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
@@ -342,11 +397,26 @@ function makeOverlayHtml() {
     }
 
     .messageInner {
+      position: relative;
       display: inline-block;
       max-width: 100%;
+      overflow: hidden;
       padding: 10px 12px;
-      background: rgba(0, 0, 0, 0.65);
-      border-radius: 12px;
+    }
+
+    .bubbleMedia {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .bubbleContent {
+      position: relative;
+      z-index: 1;
     }
 
     .meta {
@@ -397,6 +467,24 @@ function makeOverlayHtml() {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replaceAll("\\n", "");
+    }
+
+    function hexToRgb(hex) {
+      const clean = String(hex || "#000000").replace("#", "");
+
+      if (!/^[0-9a-fA-F]{6}$/.test(clean)) {
+        return "0, 0, 0";
+      }
+
+      const r = parseInt(clean.slice(0, 2), 16);
+      const g = parseInt(clean.slice(2, 4), 16);
+      const b = parseInt(clean.slice(4, 6), 16);
+
+      return r + ", " + g + ", " + b;
     }
 
     function getPlatformIcon(platform) {
@@ -451,11 +539,30 @@ function makeOverlayHtml() {
       return result;
     }
 
+    function createBubbleMedia() {
+      const overlay = settings.overlay;
+
+      if (!overlay.bubbleMediaUrl || overlay.bubbleMediaType === "none") {
+        return "";
+      }
+
+      const url = escapeAttr(overlay.bubbleMediaUrl);
+
+      if (overlay.bubbleMediaType === "video") {
+        return '<video class="bubbleMedia" src="' + url + '" autoplay muted loop playsinline></video>';
+      }
+
+      return '<img class="bubbleMedia" src="' + url + '" alt="" />';
+    }
+
     function applySettings() {
       const overlay = settings.overlay;
+      const opacity = Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
+      const rgb = hexToRgb(overlay.backgroundColor || "#000000");
 
       document.body.style.width = overlay.width + "px";
       document.body.style.height = overlay.height + "px";
+      document.body.style.fontFamily = overlay.fontFamily || "Inter, Arial, sans-serif";
 
       root.style.width = overlay.width + "px";
       root.style.height = overlay.height + "px";
@@ -471,21 +578,36 @@ function makeOverlayHtml() {
       chat.style.width = overlay.chatWidth + "px";
       chat.style.gap = overlay.messageGap + "px";
       chat.style.fontSize = overlay.fontSize + "px";
+      chat.style.fontFamily = overlay.fontFamily || "Inter, Arial, sans-serif";
+
+      if (overlay.styleMode === "containerBubble") {
+        chat.style.background = "rgba(" + rgb + ", " + opacity + ")";
+        chat.style.borderRadius = overlay.borderRadius + "px";
+        chat.style.padding = "12px";
+      } else {
+        chat.style.background = "transparent";
+        chat.style.borderRadius = "0";
+        chat.style.padding = "0";
+      }
     }
 
     function render() {
-      if (!settings) {
-        return;
-      }
+      if (!settings) return;
 
       applySettings();
 
       const overlay = settings.overlay;
+      const opacity = Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
+      const rgb = hexToRgb(overlay.backgroundColor || "#000000");
+
       const visibleMessages = messages
         .filter(messagePassesFilters)
         .slice(-overlay.maxMessages);
 
-      chat.innerHTML = visibleMessages
+      const containerMedia =
+        overlay.styleMode === "containerBubble" ? createBubbleMedia() : "";
+
+      const messagesHtml = visibleMessages
         .map((message) => {
           const parts = [];
 
@@ -501,20 +623,36 @@ function makeOverlayHtml() {
             parts.push('<span class="author">' + escapeHtml(message.authorName) + ':</span>');
           }
 
-          const backgroundOpacity = Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
+          let messageBackground = "transparent";
+          let messageRadius = 0;
+          let media = "";
+
+          if (overlay.styleMode === "color" || overlay.styleMode === "messageBubble") {
+            messageBackground = "rgba(" + rgb + ", " + opacity + ")";
+            messageRadius = overlay.borderRadius;
+          }
+
+          if (overlay.styleMode === "messageBubble") {
+            media = createBubbleMedia();
+          }
 
           return [
             '<div class="message">',
-              '<div class="messageInner" style="background: rgba(0, 0, 0, ' + backgroundOpacity + '); border-radius: ' + overlay.borderRadius + 'px;">',
-                '<span class="meta">',
-                  parts.join(""),
-                '</span>',
-                '<span class="text">' + highlightText(message.text) + '</span>',
+              '<div class="messageInner" style="background: ' + messageBackground + '; border-radius: ' + messageRadius + 'px;">',
+                media,
+                '<div class="bubbleContent">',
+                  '<span class="meta">',
+                    parts.join(""),
+                  '</span>',
+                  '<span class="text">' + highlightText(message.text) + '</span>',
+                '</div>',
               '</div>',
             '</div>'
           ].join("");
         })
         .join("");
+
+      chat.innerHTML = containerMedia + messagesHtml;
     }
 
     async function loadSettings() {
@@ -649,47 +787,7 @@ function makeTwitchCallbackHtml() {
 }
 
 function makeYouTubeCallbackHtml(success: boolean, message: string) {
-  return `<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <title>YouTube Login</title>
-  <style>
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: #0f0f1a;
-      color: white;
-      font-family: Arial, sans-serif;
-    }
-
-    .card {
-      width: min(520px, calc(100vw - 32px));
-      padding: 24px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.08);
-      text-align: center;
-    }
-
-    .ok { color: #bbf7d0; }
-    .error { color: #fecaca; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Stream Chat Hub</h1>
-    <p class="${success ? "ok" : "error"}">${message}</p>
-  </div>
-
-  <script>
-    setTimeout(() => {
-      window.close();
-    }, 1400);
-  </script>
-</body>
-</html>`;
+  return `<!doctype html><html><body>${success ? "OK" : "ERROR"}: ${message}</body></html>`;
 }
 
 async function validateTwitchToken(accessToken: string) {
@@ -739,9 +837,7 @@ function buildYouTubeAuthUrl() {
 async function exchangeYouTubeCode(code: string) {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: YOUTUBE_CLIENT_ID,
       code,
@@ -765,15 +861,11 @@ async function exchangeYouTubeCode(code: string) {
 }
 
 async function refreshYouTubeToken(auth: YouTubeAuthState) {
-  if (!auth.refreshToken) {
-    return auth;
-  }
+  if (!auth.refreshToken) return auth;
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: YOUTUBE_CLIENT_ID,
       refresh_token: auth.refreshToken,
@@ -781,10 +873,7 @@ async function refreshYouTubeToken(auth: YouTubeAuthState) {
     }),
   });
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`YouTube token refresh failed: ${text}`);
-  }
+  if (!response.ok) return auth;
 
   const data = (await response.json()) as {
     access_token: string;
@@ -810,31 +899,21 @@ async function refreshYouTubeToken(auth: YouTubeAuthState) {
 async function getUsableYouTubeAuth() {
   const auth = appSettings.youtubeAuth || defaultYouTubeAuth;
 
-  if (!auth.enabled || !auth.accessToken) {
-    return auth;
-  }
+  if (!auth.enabled || !auth.accessToken) return auth;
 
   const expiresAt = auth.expiresAt || 0;
   const shouldRefresh = expiresAt - Date.now() < 60_000;
 
-  if (!shouldRefresh) {
-    return auth;
-  }
+  if (!shouldRefresh) return auth;
 
-  try {
-    return await refreshYouTubeToken(auth);
-  } catch (error) {
-    console.error("[YOUTUBE AUTH REFRESH ERROR]", error);
-    return auth;
-  }
+  return refreshYouTubeToken(auth);
 }
 
 export async function startLocalServer() {
-  const server = Fastify({
-    logger: false,
-  });
+  const server = Fastify({ logger: false });
 
   await server.register(websocket);
+  await server.register(multipart);
 
   server.addHook("onRequest", async (_request, reply) => {
     reply.header("Access-Control-Allow-Origin", "*");
@@ -846,9 +925,75 @@ export async function startLocalServer() {
     reply.send();
   });
 
-  server.get("/settings", async () => {
-    return getSafeSettings(appSettings);
+  server.get("/overlay-assets/:fileName", async (request, reply) => {
+    const params = request.params as { fileName: string };
+    const safeFileName = path.basename(params.fileName);
+    const filePath = path.join(overlayAssetsDir, safeFileName);
+
+    if (!fs.existsSync(filePath)) {
+      reply.code(404).send({ ok: false, error: "Файл не найден" });
+      return;
+    }
+
+    reply.type(getContentType(safeFileName)).send(fs.readFileSync(filePath));
   });
+
+  server.post("/overlay-assets/upload", async (request, reply) => {
+    try {
+      ensureOverlayAssetsDir();
+
+      const file = await request.file();
+
+      if (!file) {
+        reply.code(400).send({
+          ok: false,
+          url: "",
+          mediaType: "none",
+          error: "Файл не выбран",
+        });
+        return;
+      }
+
+      const originalName = file.filename || "overlay-asset";
+      const ext = path.extname(originalName).toLowerCase();
+
+      if (!allowedOverlayAssetExtensions.has(ext)) {
+        reply.code(400).send({
+          ok: false,
+          url: "",
+          mediaType: "none",
+          error: "Поддерживаются PNG, WebP, GIF, MP4, WebM, MOV",
+        });
+        return;
+      }
+
+      const fileName = `${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}${ext}`;
+
+      const filePath = path.join(overlayAssetsDir, fileName);
+      const buffer = await file.toBuffer();
+
+      fs.writeFileSync(filePath, buffer);
+
+      const mediaType = getOverlayMediaType(fileName);
+
+      reply.send({
+        ok: true,
+        url: `http://localhost:${PORT}/overlay-assets/${fileName}`,
+        mediaType,
+      });
+    } catch (error) {
+      reply.code(500).send({
+        ok: false,
+        url: "",
+        mediaType: "none",
+        error: error instanceof Error ? error.message : "Ошибка загрузки файла",
+      });
+    }
+  });
+
+  server.get("/settings", async () => getSafeSettings(appSettings));
 
   server.post("/settings", async (request, reply) => {
     const incomingSettings = request.body as Partial<AppSettings>;
@@ -865,39 +1010,28 @@ export async function startLocalServer() {
     reply.send({ ok: true });
   });
 
-  server.get("/messages", async () => {
-    return messages;
-  });
+  server.get("/messages", async () => messages);
 
   server.post("/messages/clear", async () => {
     clearMessages();
-
     return { ok: true };
   });
 
   server.get("/app/ws", { websocket: true }, (connection) => {
     appSockets.add(connection.socket);
-
-    connection.socket.on("close", () => {
-      appSockets.delete(connection.socket);
-    });
+    connection.socket.on("close", () => appSockets.delete(connection.socket));
   });
 
   server.get("/overlay/ws", { websocket: true }, (connection) => {
     overlaySockets.add(connection.socket);
-
-    connection.socket.on("close", () => {
-      overlaySockets.delete(connection.socket);
-    });
+    connection.socket.on("close", () => overlaySockets.delete(connection.socket));
   });
 
   server.get("/o", async (_request, reply) => {
     reply.type("text/html").send(makeOverlayHtml());
   });
 
-  server.get("/twitch/status", async () => {
-    return twitchChatClient.getStatus();
-  });
+  server.get("/twitch/status", async () => twitchChatClient.getStatus());
 
   server.get("/twitch/viewers", async () => {
     return getTwitchViewersStatus({
@@ -907,17 +1041,11 @@ export async function startLocalServer() {
     });
   });
 
-  server.get("/youtube/status", async () => {
-    return youtubeChatClient.getStatus();
-  });
+  server.get("/youtube/status", async () => youtubeChatClient.getStatus());
 
-  server.get("/twitch/auth/status", async () => {
-    return getSafeTwitchAuthState();
-  });
+  server.get("/twitch/auth/status", async () => getSafeTwitchAuthState());
 
-  server.get("/youtube/auth/status", async () => {
-    return getSafeYouTubeAuthState();
-  });
+  server.get("/youtube/auth/status", async () => getSafeYouTubeAuthState());
 
   server.get("/twitch/auth/start", async (_request, reply) => {
     reply.redirect(buildTwitchAuthUrl());
@@ -928,11 +1056,7 @@ export async function startLocalServer() {
       !YOUTUBE_CLIENT_ID ||
       YOUTUBE_CLIENT_ID === "ТВОЙ_GOOGLE_OAUTH_CLIENT_ID"
     ) {
-      reply.code(400).send({
-        ok: false,
-        error: "YouTube OAuth не настроен",
-      });
-
+      reply.code(400).send({ ok: false, error: "YouTube OAuth не настроен" });
       return;
     }
 
@@ -954,12 +1078,7 @@ export async function startLocalServer() {
       if (query.error) {
         reply
           .type("text/html")
-          .send(
-            makeYouTubeCallbackHtml(
-              false,
-              query.error_description || query.error
-            )
-          );
+          .send(makeYouTubeCallbackHtml(false, query.error_description || query.error));
         return;
       }
 
@@ -983,23 +1102,10 @@ export async function startLocalServer() {
 
       saveSettings(appSettings);
 
-      console.log("[YOUTUBE AUTH] Login completed", {
-        hasAccessToken: Boolean(appSettings.youtubeAuth.accessToken),
-        hasRefreshToken: Boolean(appSettings.youtubeAuth.refreshToken),
-        scopes: appSettings.youtubeAuth.scopes,
-      });
-
       reply
         .type("text/html")
-        .send(
-          makeYouTubeCallbackHtml(
-            true,
-            "YouTube Login готов. Можно закрыть окно."
-          )
-        );
-    } catch (error) {
-      console.error("[YOUTUBE AUTH ERROR]", error);
-
+        .send(makeYouTubeCallbackHtml(true, "YouTube Login готов."));
+    } catch {
       reply
         .type("text/html")
         .send(makeYouTubeCallbackHtml(false, "Ошибка YouTube Login"));
@@ -1008,8 +1114,6 @@ export async function startLocalServer() {
 
   server.post("/twitch/auth/token", async (request, reply) => {
     try {
-      console.log("[TWITCH AUTH TOKEN] Получен запрос сохранения токена");
-
       const body = request.body as {
         accessToken?: string;
         scopes?: string[];
@@ -1019,29 +1123,17 @@ export async function startLocalServer() {
         typeof body.accessToken === "string" ? body.accessToken.trim() : "";
 
       if (!accessToken) {
-        reply.code(400).send({
-          ok: false,
-          error: "Access token пустой",
-        });
-
+        reply.code(400).send({ ok: false, error: "Access token пустой" });
         return;
       }
 
       const tokenInfo = await validateTwitchToken(accessToken);
-
-      console.log("[TWITCH AUTH TOKEN] Token info:", {
-        client_id: tokenInfo.client_id,
-        login: tokenInfo.login,
-        scopes: tokenInfo.scopes,
-        expires_in: tokenInfo.expires_in,
-      });
 
       if (tokenInfo.client_id !== TWITCH_CLIENT_ID) {
         reply.code(400).send({
           ok: false,
           error: "Token выдан для другого Twitch Client ID",
         });
-
         return;
       }
 
@@ -1049,14 +1141,12 @@ export async function startLocalServer() {
         ? tokenInfo.scopes
         : body.scopes || [];
 
-      const expiresAt = Date.now() + tokenInfo.expires_in * 1000;
-
       appSettings.twitchAuth = {
         enabled: true,
         username: tokenInfo.login,
         accessToken,
         scopes,
-        expiresAt,
+        expiresAt: Date.now() + tokenInfo.expires_in * 1000,
       };
 
       const ownChannelName = normalizeTwitchChannelName(tokenInfo.login);
@@ -1076,21 +1166,15 @@ export async function startLocalServer() {
             enabled: true,
           },
         ];
-
-        console.log("[TWITCH AUTH TOKEN] Auto added own channel:", ownChannelName);
       }
 
       saveSettings(appSettings);
 
       const twitchChannelNames = getEnabledTwitchChannelNames(appSettings.sources);
 
-      console.log("[TWITCH AUTH TOKEN] Enabled Twitch channels:", twitchChannelNames);
-
       let twitchStatus = twitchChatClient.getStatus();
 
       if (twitchChannelNames.length > 0) {
-        console.log("[TWITCH AUTH TOKEN] Auto reconnect after login");
-
         twitchStatus = await twitchChatClient.connect(
           twitchChannelNames,
           appSettings.twitchAuth
@@ -1102,9 +1186,7 @@ export async function startLocalServer() {
         auth: getSafeTwitchAuthState(),
         twitchStatus,
       });
-    } catch (error) {
-      console.error("[TWITCH AUTH TOKEN ERROR]", error);
-
+    } catch {
       reply.code(400).send({
         ok: false,
         error: "Не удалось проверить Twitch token",
@@ -1113,10 +1195,7 @@ export async function startLocalServer() {
   });
 
   server.post("/twitch/auth/logout", async () => {
-    appSettings.twitchAuth = {
-      ...defaultTwitchAuth,
-    };
-
+    appSettings.twitchAuth = { ...defaultTwitchAuth };
     saveSettings(appSettings);
 
     await twitchChatClient.disconnect();
@@ -1129,10 +1208,7 @@ export async function startLocalServer() {
   });
 
   server.post("/youtube/auth/logout", async () => {
-    appSettings.youtubeAuth = {
-      ...defaultYouTubeAuth,
-    };
-
+    appSettings.youtubeAuth = { ...defaultYouTubeAuth };
     saveSettings(appSettings);
 
     await youtubeChatClient.disconnect();
@@ -1164,15 +1240,6 @@ export async function startLocalServer() {
     const twitchAuth = appSettings.twitchAuth || defaultTwitchAuth;
     const youtubeAuth = await getUsableYouTubeAuth();
 
-    console.log("[CHAT CONNECT]");
-    console.log("[TWITCH CHANNELS]", twitchChannelNames);
-    console.log("[TWITCH AUTH]", {
-      enabled: twitchAuth.enabled,
-      username: twitchAuth.username,
-      hasToken: Boolean(twitchAuth.accessToken),
-      scopes: twitchAuth.scopes,
-    });
-
     const twitchStatus = await twitchChatClient.connect(
       twitchChannelNames,
       twitchAuth.enabled ? twitchAuth : null
@@ -1203,26 +1270,16 @@ export async function startLocalServer() {
     };
   });
 
-  server.get("/mock/status", async () => {
-    return getMockStatus();
-  });
+  server.get("/mock/status", async () => getMockStatus());
 
   server.post("/mock/start", async () => {
     startMockMessages();
-
-    return {
-      ok: true,
-      running: mockRunning,
-    };
+    return { ok: true, running: mockRunning };
   });
 
   server.post("/mock/stop", async () => {
     stopMockMessages();
-
-    return {
-      ok: true,
-      running: mockRunning,
-    };
+    return { ok: true, running: mockRunning };
   });
 
   await server.listen({

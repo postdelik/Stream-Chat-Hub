@@ -148,5 +148,7 @@ export function OverlaySettingsSection({
         </label>
       </div>
     </CollapsibleSection>
+    
   );
+  
 }

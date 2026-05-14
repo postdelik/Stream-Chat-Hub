@@ -2,6 +2,10 @@ export type ChatPlatform = "twitch" | "youtube" | "mock";
 
 export type OverlayPosition = "left" | "center" | "right";
 
+export type OverlayStyleMode = "color" | "containerBubble" | "messageBubble";
+
+export type OverlayBubbleMediaType = "none" | "image" | "video";
+
 export type OverlayFilterSettings = {
   hideCommands: boolean;
   hideLinks: boolean;
@@ -29,6 +33,7 @@ export type OverlaySettings = {
   width: number;
   height: number;
   fontSize: number;
+  fontFamily: string;
   chatWidth: number;
   maxMessages: number;
   position: OverlayPosition;
@@ -38,8 +43,14 @@ export type OverlaySettings = {
   showAuthorName: boolean;
 
   backgroundOpacity: number;
+  backgroundColor: string;
   borderRadius: number;
   messageGap: number;
+
+  styleMode: OverlayStyleMode;
+  showStyleInApp: boolean;
+  bubbleMediaUrl: string;
+  bubbleMediaType: OverlayBubbleMediaType;
 
   filters: OverlayFilterSettings;
 };
@@ -118,4 +129,11 @@ export type TwitchViewersStatus = {
   totalViewers: number;
   channels: TwitchViewerCount[];
   error: string | null;
+};
+
+export type UploadedOverlayAsset = {
+  ok: boolean;
+  url: string;
+  mediaType: OverlayBubbleMediaType;
+  error?: string;
 };

@@ -13,13 +13,11 @@ export function AboutSection({
   chooseLanguage,
 }: AboutSectionProps) {
   return (
-    <CollapsibleSection title={t("aboutTitle")} badge="v0.2.1">
+    <CollapsibleSection title={t("aboutTitle")} badge="v0.2.2">
       <div className="aboutBox">
         <p>
-          <strong>Stream Chat Hub</strong> beta v0.2.1
+          <strong>Stream Chat Hub</strong> beta v0.2.2
         </p>
-
-        <p className="hint">{t("aboutText")}</p>
 
         <div className="linkList">
           <a
@@ -44,7 +42,9 @@ export function AboutSection({
 
           <div className="languageSwitcherButtons">
             <button
-              className={language === "ru" ? "smallButton activeLanguage" : "smallButton"}
+              className={
+                language === "ru" ? "smallButton activeLanguage" : "smallButton"
+              }
               type="button"
               onClick={() => chooseLanguage("ru")}
             >
@@ -52,7 +52,9 @@ export function AboutSection({
             </button>
 
             <button
-              className={language === "en" ? "smallButton activeLanguage" : "smallButton"}
+              className={
+                language === "en" ? "smallButton activeLanguage" : "smallButton"
+              }
               type="button"
               onClick={() => chooseLanguage("en")}
             >
@@ -60,8 +62,6 @@ export function AboutSection({
             </button>
           </div>
         </div>
-
-        <p className="hint">{t("changeLanguageHint")}</p>
       </div>
     </CollapsibleSection>
   );

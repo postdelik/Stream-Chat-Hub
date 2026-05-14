@@ -3,8 +3,10 @@ import type {
   AppSettings,
   ChatMessage,
   ChatSource,
+  OverlayBubbleMediaType,
   OverlayPosition,
   OverlaySettings,
+  OverlayStyleMode,
   SafeTwitchAuthState,
   SafeYouTubeAuthState,
   TwitchConnectionStatus,
@@ -72,6 +74,17 @@ const defaultTwitchViewersStatus: TwitchViewersStatus = {
   error: null,
 };
 
+const fallbackFonts = [
+  "Inter, Arial, sans-serif",
+  "Arial, sans-serif",
+  "Segoe UI, sans-serif",
+  "Verdana, sans-serif",
+  "Tahoma, sans-serif",
+  "Georgia, serif",
+  "Times New Roman, serif",
+  "Courier New, monospace",
+];
+
 export function App() {
   const [language, setLanguage] = useState<AppLanguage | null>(() =>
     getSavedLanguage()
@@ -91,7 +104,7 @@ export function App() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [settingsFilePath] = useState("");
+  const [, setSaveStatus] = useState(t("loadingSettings"));
 
   const [sources, setSources] = useState<ChatSource[]>([]);
   const [activeAddSourceTab, setActiveAddSourceTab] =
@@ -123,6 +136,11 @@ export function App() {
   const [overlayWidth, setOverlayWidth] = useState(800);
   const [overlayHeight, setOverlayHeight] = useState(600);
   const [overlayFontSize, setOverlayFontSize] = useState(24);
+  const [overlayFontFamily, setOverlayFontFamily] = useState(
+    "Inter, Arial, sans-serif"
+  );
+  const [availableFonts] = useState<string[]>(fallbackFonts);
+
   const [overlayChatWidth, setOverlayChatWidth] = useState(520);
   const [overlayMaxMessages, setOverlayMaxMessages] = useState(12);
   const [overlayPosition, setOverlayPosition] =
@@ -133,8 +151,18 @@ export function App() {
   const [overlayShowAuthorName, setOverlayShowAuthorName] = useState(true);
 
   const [overlayBackgroundOpacity, setOverlayBackgroundOpacity] = useState(65);
+  const [overlayBackgroundColor, setOverlayBackgroundColor] =
+    useState("#000000");
   const [overlayBorderRadius, setOverlayBorderRadius] = useState(12);
   const [overlayMessageGap, setOverlayMessageGap] = useState(8);
+
+  const [overlayStyleMode, setOverlayStyleMode] =
+    useState<OverlayStyleMode>("messageBubble");
+  const [overlayShowStyleInApp, setOverlayShowStyleInApp] = useState(false);
+  const [overlayBubbleMediaUrl, setOverlayBubbleMediaUrl] = useState("");
+  const [overlayBubbleMediaType, setOverlayBubbleMediaType] =
+    useState<OverlayBubbleMediaType>("none");
+  const [overlayAssetUploadStatus, setOverlayAssetUploadStatus] = useState("");
 
   const [filterHideCommands, setFilterHideCommands] = useState(false);
   const [filterHideLinks, setFilterHideLinks] = useState(false);
@@ -142,7 +170,6 @@ export function App() {
   const [filterHighlightWords, setFilterHighlightWords] = useState("");
 
   const [copyStatus, setCopyStatus] = useState("");
-  const [saveStatus, setSaveStatus] = useState(t("loadingSettings"));
   const [chatOnlyMode, setChatOnlyMode] = useState(false);
 
   const enabledSourcesCount = sources.filter((source) => source.enabled).length;
@@ -162,6 +189,7 @@ export function App() {
       width: clampNumber(overlayWidth, 800, 100, 5000),
       height: clampNumber(overlayHeight, 600, 100, 5000),
       fontSize: clampNumber(overlayFontSize, 24, 10, 120),
+      fontFamily: overlayFontFamily,
       chatWidth: clampNumber(overlayChatWidth, 520, 200, 3000),
       maxMessages: clampNumber(overlayMaxMessages, 12, 1, 100),
       position: overlayPosition,
@@ -171,8 +199,14 @@ export function App() {
       showAuthorName: overlayShowAuthorName,
 
       backgroundOpacity: clampNumber(overlayBackgroundOpacity, 65, 0, 100),
+      backgroundColor: overlayBackgroundColor,
       borderRadius: clampNumber(overlayBorderRadius, 12, 0, 60),
       messageGap: clampNumber(overlayMessageGap, 8, 0, 40),
+
+      styleMode: overlayStyleMode,
+      showStyleInApp: overlayShowStyleInApp,
+      bubbleMediaUrl: overlayBubbleMediaUrl,
+      bubbleMediaType: overlayBubbleMediaType,
 
       filters: {
         hideCommands: filterHideCommands,
@@ -185,6 +219,7 @@ export function App() {
     overlayWidth,
     overlayHeight,
     overlayFontSize,
+    overlayFontFamily,
     overlayChatWidth,
     overlayMaxMessages,
     overlayPosition,
@@ -192,8 +227,13 @@ export function App() {
     overlayShowChannelName,
     overlayShowAuthorName,
     overlayBackgroundOpacity,
+    overlayBackgroundColor,
     overlayBorderRadius,
     overlayMessageGap,
+    overlayStyleMode,
+    overlayShowStyleInApp,
+    overlayBubbleMediaUrl,
+    overlayBubbleMediaType,
     filterHideCommands,
     filterHideLinks,
     filterOnlyWords,
@@ -217,6 +257,7 @@ export function App() {
     setOverlayWidth(data.overlay.width);
     setOverlayHeight(data.overlay.height);
     setOverlayFontSize(data.overlay.fontSize);
+    setOverlayFontFamily(data.overlay.fontFamily || "Inter, Arial, sans-serif");
     setOverlayChatWidth(data.overlay.chatWidth);
     setOverlayMaxMessages(data.overlay.maxMessages);
     setOverlayPosition(data.overlay.position);
@@ -226,8 +267,14 @@ export function App() {
     setOverlayShowAuthorName(data.overlay.showAuthorName);
 
     setOverlayBackgroundOpacity(data.overlay.backgroundOpacity);
+    setOverlayBackgroundColor(data.overlay.backgroundColor || "#000000");
     setOverlayBorderRadius(data.overlay.borderRadius);
     setOverlayMessageGap(data.overlay.messageGap);
+
+    setOverlayStyleMode(data.overlay.styleMode || "messageBubble");
+    setOverlayShowStyleInApp(Boolean(data.overlay.showStyleInApp));
+    setOverlayBubbleMediaUrl(data.overlay.bubbleMediaUrl || "");
+    setOverlayBubbleMediaType(data.overlay.bubbleMediaType || "none");
 
     setFilterHideCommands(data.overlay.filters.hideCommands);
     setFilterHideLinks(data.overlay.filters.hideLinks);
@@ -344,8 +391,10 @@ export function App() {
       setOverlayShowAuthorName(true);
       setOverlayShowChannelName(false);
       setOverlayBackgroundOpacity(55);
+      setOverlayBackgroundColor("#000000");
       setOverlayBorderRadius(10);
       setOverlayMessageGap(6);
+      setOverlayStyleMode("messageBubble");
       setChatActionStatus(t("presetCompact"));
       return;
     }
@@ -361,8 +410,10 @@ export function App() {
       setOverlayShowAuthorName(true);
       setOverlayShowChannelName(true);
       setOverlayBackgroundOpacity(65);
+      setOverlayBackgroundColor("#000000");
       setOverlayBorderRadius(12);
       setOverlayMessageGap(8);
+      setOverlayStyleMode("messageBubble");
       setChatActionStatus(t("presetStandard"));
       return;
     }
@@ -378,8 +429,10 @@ export function App() {
       setOverlayShowAuthorName(true);
       setOverlayShowChannelName(true);
       setOverlayBackgroundOpacity(70);
+      setOverlayBackgroundColor("#000000");
       setOverlayBorderRadius(16);
       setOverlayMessageGap(10);
+      setOverlayStyleMode("messageBubble");
       setChatActionStatus(t("presetLarge"));
       return;
     }
@@ -394,8 +447,10 @@ export function App() {
     setOverlayShowAuthorName(true);
     setOverlayShowChannelName(false);
     setOverlayBackgroundOpacity(0);
+    setOverlayBackgroundColor("#000000");
     setOverlayBorderRadius(0);
     setOverlayMessageGap(6);
+    setOverlayStyleMode("color");
     setChatActionStatus(t("presetTextOnly"));
   }
 
@@ -434,7 +489,9 @@ export function App() {
   }
 
   function addAuthTwitchSource() {
-    setChatActionStatus("После Twitch Login канал аккаунта добавляется автоматически");
+    setChatActionStatus(
+      "После Twitch Login канал аккаунта добавляется автоматически"
+    );
   }
 
   function addYouTubeSource() {
@@ -840,15 +897,30 @@ export function App() {
           overlayShowPlatformIcon={overlayShowPlatformIcon}
           overlayShowAuthorName={overlayShowAuthorName}
           overlayShowChannelName={overlayShowChannelName}
+          overlayShowStyleInApp={overlayShowStyleInApp}
           overlayBackgroundOpacity={overlayBackgroundOpacity}
+          overlayBackgroundColor={overlayBackgroundColor}
           overlayBorderRadius={overlayBorderRadius}
           overlayMessageGap={overlayMessageGap}
+          overlayStyleMode={overlayStyleMode}
+          overlayBubbleMediaUrl={overlayBubbleMediaUrl}
+          overlayBubbleMediaType={overlayBubbleMediaType}
+          overlayFontFamily={overlayFontFamily}
+          availableFonts={availableFonts}
+          overlayAssetUploadStatus={overlayAssetUploadStatus}
           setOverlayShowPlatformIcon={setOverlayShowPlatformIcon}
           setOverlayShowAuthorName={setOverlayShowAuthorName}
           setOverlayShowChannelName={setOverlayShowChannelName}
+          setOverlayShowStyleInApp={setOverlayShowStyleInApp}
           setOverlayBackgroundOpacity={setOverlayBackgroundOpacity}
+          setOverlayBackgroundColor={setOverlayBackgroundColor}
           setOverlayBorderRadius={setOverlayBorderRadius}
           setOverlayMessageGap={setOverlayMessageGap}
+          setOverlayStyleMode={setOverlayStyleMode}
+          setOverlayBubbleMediaUrl={setOverlayBubbleMediaUrl}
+          setOverlayBubbleMediaType={setOverlayBubbleMediaType}
+          setOverlayFontFamily={setOverlayFontFamily}
+          setOverlayAssetUploadStatus={setOverlayAssetUploadStatus}
         />
 
         <MessageFiltersSection
@@ -867,8 +939,6 @@ export function App() {
           t={t}
           overlayUrl={overlayUrl}
           copyStatus={copyStatus}
-          saveStatus={saveStatus}
-          settingsFilePath={settingsFilePath}
           copyOverlayUrl={copyOverlayUrl}
         />
 
@@ -893,6 +963,8 @@ export function App() {
         chatOnlyMode={chatOnlyMode}
         onToggleChatOnlyMode={() => setChatOnlyMode((current) => !current)}
         twitchViewersStatus={twitchViewersStatus}
+        filterHighlightWords={filterHighlightWords}
+        overlaySettings={overlaySettings}
       />
     </main>
   );

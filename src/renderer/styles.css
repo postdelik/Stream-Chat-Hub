@@ -736,3 +736,180 @@ code {
 .viewerCounterError {
   color: #fecaca;
 }
+.styleUploadBox {
+  display: grid;
+  gap: 10px;
+}
+
+.fileUploadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: #ffffff;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(124, 58, 237, 0.26);
+}
+
+.fileUploadButton input {
+  display: none;
+}
+
+.stylePreviewBox {
+  display: grid;
+  gap: 10px;
+}
+
+.stylePreview {
+  overflow: hidden;
+  min-height: 90px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stylePreview img,
+.stylePreview video {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+.segmentedArrowTabs {
+  display: flex;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 14px;
+}
+
+.arrowTab {
+  flex: 1;
+  min-height: 28px;
+  padding: 5px 6px;
+  color: #cbd5e1;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 800;
+  transition:
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.arrowTab + .arrowTab {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.arrowTab.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+}
+
+.arrowTab:not(.active):hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.appHighlight,
+.highlight {
+  padding: 0 3px;
+  border-radius: 5px;
+  color: #111827;
+  background: #fde68a;
+  font-weight: 950;
+}
+.colorPickerRow {
+  display: grid;
+  grid-template-columns: 1fr 34px;
+  gap: 10px;
+  align-items: center;
+}
+
+.colorDot {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
+}
+
+.colorDot input {
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.appStyledChat {
+  position: relative;
+  overflow: hidden;
+  padding: 14px;
+}
+
+.appStyledMessage {
+  position: relative;
+  overflow: hidden;
+}
+
+.appStyledChat > *:not(.appBubbleMedia),
+.appStyledMessage > *:not(.appBubbleMedia) {
+  position: relative;
+  z-index: 1;
+}
+
+.appBubbleMedia {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.appMessageContent {
+  position: relative;
+  z-index: 1;
+}
+.appStyledMessage {
+  margin-bottom: 10px;
+}
+
+.appStyledChat .message {
+  z-index: 1;
+}
+
+.appStyledChat::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.messages .message {
+  min-height: auto;
+  height: auto;
+  padding: 12px 14px;
+  align-items: flex-start;
+  overflow: visible;
+}
+
+.messages .message p {
+  margin: 4px 0 0;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.messages .meta {
+  line-height: 1.25;
+}
+
+.appStyledMessage {
+  height: auto;
+  min-height: 54px;
+}

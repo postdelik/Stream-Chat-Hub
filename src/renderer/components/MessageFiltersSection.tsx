@@ -47,9 +47,9 @@ export function MessageFiltersSection({
 
       <label className="field filterField">
         <span>{t("onlyWords")}</span>
+
         <input
           type="text"
-          placeholder={t("onlyWordsPlaceholder")}
           value={filterOnlyWords}
           onChange={(event) => setFilterOnlyWords(event.target.value)}
         />
@@ -57,15 +57,15 @@ export function MessageFiltersSection({
 
       <label className="field filterField">
         <span>{t("highlightWords")}</span>
+
         <input
           type="text"
-          placeholder={t("highlightWordsPlaceholder")}
           value={filterHighlightWords}
           onChange={(event) => setFilterHighlightWords(event.target.value)}
         />
       </label>
 
-      <p className="hint">{t("filtersHint")}</p>
+      <p className="hint">{t("commaSeparatedWordsHint")}</p>
     </CollapsibleSection>
   );
 }

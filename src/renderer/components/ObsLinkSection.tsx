@@ -4,8 +4,6 @@ type ObsLinkSectionProps = {
   t: (key: string) => string;
   overlayUrl: string;
   copyStatus: string;
-  saveStatus: string;
-  settingsFilePath: string;
   copyOverlayUrl: () => void;
 };
 
@@ -13,8 +11,6 @@ export function ObsLinkSection({
   t,
   overlayUrl,
   copyStatus,
-  saveStatus,
-  settingsFilePath,
   copyOverlayUrl,
 }: ObsLinkSectionProps) {
   return (
@@ -26,15 +22,6 @@ export function ObsLinkSection({
       </button>
 
       {copyStatus && <p className="copyStatus">{copyStatus}</p>}
-
-      <p className="copyStatus">{saveStatus}</p>
-
-      {settingsFilePath && (
-        <p className="hint">
-          {t("settingsFile")}: <br />
-          {settingsFilePath}
-        </p>
-      )}
 
       <p className="hint">{t("obsLinkHint")}</p>
     </CollapsibleSection>
