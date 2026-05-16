@@ -1,5 +1,7 @@
 # Stream Chat Hub
 
+[English](#english) | [Русский](#русский)
+
 ## English
 
 Stream Chat Hub is a desktop application for reading Twitch chat and displaying it as a customizable OBS overlay.
