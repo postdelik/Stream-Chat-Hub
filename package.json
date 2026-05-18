@@ -48,7 +48,8 @@
     "files": [
       "dist/**/*",
       "dist-main/**/*",
-      "package.json"
+      "package.json",
+      "build/**/*"
     ],
     "win": {
       "target": [

@@ -1,28 +1,45 @@
 import path from "node:path";
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, Menu, shell } from "electron";
 import { startLocalServer } from "../server/localServer";
 
 let mainWindow: BrowserWindow | null = null;
 
 const isDev = !app.isPackaged;
 
+function getIconPath() {
+  if (isDev) {
+    return path.join(process.cwd(), "build", "icon.ico");
+  }
+
+  return path.join(app.getAppPath(), "build", "icon.ico");
+}
+
 async function createWindow() {
-mainWindow = new BrowserWindow({
-  width: 1200,
-  height: 800,
-  minWidth: 420,
-  minHeight: 520,
-  backgroundColor: "#080714",
-  show: false,
-  icon: path.join(app.getAppPath(), "build", "icon.ico"),
-  webPreferences: {
-    nodeIntegration: false,
-    contextIsolation: true,
-  },
-});
+  const iconPath = getIconPath();
+
+  mainWindow = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 900,
+    minHeight: 620,
+    backgroundColor: "#080714",
+    show: false,
+    icon: iconPath,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  mainWindow.setMenu(null);
+
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+  });
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    void shell.openExternal(url);
 
     return {
       action: "deny",
@@ -30,18 +47,22 @@ mainWindow = new BrowserWindow({
   });
 
   mainWindow.webContents.on("will-navigate", (event, url) => {
-    if (
-      url.startsWith("https://accounts.google.com") ||
-      url.startsWith("https://youtube.com") ||
-      url.startsWith("https://www.youtube.com")
-    ) {
-      event.preventDefault();
-      shell.openExternal(url);
-    }
-  });
+    const currentUrl = mainWindow?.webContents.getURL();
 
-  mainWindow.once("ready-to-show", () => {
-    mainWindow?.show();
+    if (!currentUrl) {
+      return;
+    }
+
+    const isSamePage = url === currentUrl;
+    const isLocalDevPage = isDev && url.startsWith("http://localhost:5173");
+    const isLocalAppPage = url.startsWith("file://");
+
+    if (isSamePage || isLocalDevPage || isLocalAppPage) {
+      return;
+    }
+
+    event.preventDefault();
+    void shell.openExternal(url);
   });
 
   if (isDev) {
@@ -56,6 +77,11 @@ mainWindow = new BrowserWindow({
 }
 
 app.whenReady().then(async () => {
+  app.setName("Stream Chat Hub");
+  app.setAppUserModelId("com.postdelik.streamchathub");
+
+  Menu.setApplicationMenu(null);
+
   await startLocalServer();
   await createWindow();
 });
