@@ -913,3 +913,17 @@ code {
   height: auto;
   min-height: 54px;
 }
+.brandLogo {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 18px;
+  border-radius: 24px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: -1px;
+  box-shadow: 0 18px 50px rgba(124, 58, 237, 0.35);
+}

@@ -807,38 +807,37 @@ export function App() {
 
   if (!language) {
     return (
-      <main className="languageScreen">
+     <main className="languageScreen">
         <section className="languageCard">
-          <div className="languageLogo">💬</div>
+          <div className="languageLogo brandLogo">SCH</div>
+
           <h1>Stream Chat Hub</h1>
-          <h2>{translations.ru.chooseLanguageTitle} / Choose language</h2>
+          <h2>Выберите язык / Choose language</h2>
           <p>
-            Выберите язык интерфейса. You can change it later in the app
-            settings.
+             Выберите язык интерфейса / Choose interface language
           </p>
 
-          <div className="languageButtons">
-            <button
-              className="button"
-              type="button"
-              onClick={() => chooseLanguage("ru")}
-            >
-              Русский
-            </button>
+      <div className="languageButtons">
+        <button
+          className="button"
+          type="button"
+          onClick={() => chooseLanguage("ru")}
+        >
+          Русский
+        </button>
 
-            <button
-              className="button secondaryButton"
-              type="button"
-              onClick={() => chooseLanguage("en")}
-            >
-              English
-            </button>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
+        <button
+          className="button secondaryButton"
+          type="button"
+          onClick={() => chooseLanguage("en")}
+        >
+          English
+        </button>
+      </div>
+    </section>
+  </main>
+);
+}
   return (
     <main className={chatOnlyMode ? "app chatOnlyMode" : "app"}>
       <aside className="sidebar">
