@@ -1,6 +1,49 @@
 # Release Notes
 
 ---
+# Stream Chat Hub v0.4.0-alpha.1
+
+## English
+
+### Added
+- Initial Twitch emotes support.
+- Twitch emote tags parsing from chat messages.
+- Native Twitch emotes rendering inside the app chat.
+- Native Twitch emotes rendering inside the OBS overlay.
+- Emote image support in shared chat message structure.
+
+### Improved
+- Chat message rendering now supports mixed text and emote images.
+- OBS overlay message rendering now supports mixed text and emote images.
+- Highlighted words continue to work together with emotes.
+
+### Notes
+- This is the first step toward the full Emotes System planned for v0.4.0.
+- Current support is focused on native Twitch emotes.
+- 7TV, BTTV, FFZ, emote settings, and emote size controls are planned next.
+
+---
+
+## Русский
+
+### Добавлено
+- Первая поддержка Twitch emotes.
+- Парсинг Twitch emote tags из сообщений чата.
+- Отображение нативных Twitch emotes внутри приложения.
+- Отображение нативных Twitch emotes в OBS overlay.
+- Поддержка emote-картинок в общей структуре сообщений.
+
+### Улучшено
+- Рендер сообщений теперь поддерживает смешанный текст и emote-картинки.
+- OBS overlay теперь поддерживает смешанный текст и emote-картинки.
+- Подсветка слов продолжает работать вместе с emotes.
+
+### Примечания
+- Это первый шаг к полноценной Emotes System для v0.4.0.
+- Сейчас поддерживаются нативные Twitch emotes.
+- 7TV, BTTV, FFZ, настройки emotes и размер emotes планируются дальше.
+
+---
 
 # Stream Chat Hub v0.3.0
 
