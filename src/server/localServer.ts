@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { spawn } from "node:child_process";
 import Fastify from "fastify";
 import websocket from "@fastify/websocket";
 import multipart from "@fastify/multipart";
@@ -13,6 +14,9 @@ import type {
   SafeTwitchAuthState,
   SafeYouTubeAuthState,
   TwitchAuthState,
+  UpdateCheckResult,
+  UpdateInstallResult,
+  UpdateSettings,
   YouTubeAuthState,
 } from "../shared/types";
 import { TwitchChatClient } from "./twitchChat";
@@ -20,6 +24,9 @@ import { YouTubeChatClient } from "./youtubeChat";
 import { getTwitchViewersStatus } from "./twitchViewers";
 
 const PORT = 3877;
+
+const GITHUB_OWNER = "postdelik";
+const GITHUB_REPO = "Stream-Chat-Hub";
 
 const TWITCH_CLIENT_ID = "18ipdprohcqbx04oykqelu0a3h92mc";
 const TWITCH_REDIRECT_URI = `http://localhost:${PORT}/twitch/auth/callback`;
@@ -42,6 +49,11 @@ const allowedOverlayAssetExtensions = new Set([
   ".mov",
 ]);
 
+const defaultUpdateSettings: UpdateSettings = {
+  autoCheckEnabled: true,
+  skippedVersion: "",
+};
+
 const defaultOverlaySettings: OverlaySettings = {
   width: 800,
   height: 600,
@@ -60,10 +72,10 @@ const defaultOverlaySettings: OverlaySettings = {
   borderRadius: 12,
   messageGap: 8,
 
-styleMode: "messageBubble",
-showStyleInApp: false,
-bubbleMediaUrl: "",
-bubbleMediaType: "none",
+  styleMode: "messageBubble",
+  showStyleInApp: false,
+  bubbleMediaUrl: "",
+  bubbleMediaType: "none",
 
   filters: {
     hideCommands: false,
@@ -93,9 +105,23 @@ const defaultSettings: AppSettings = {
   sources: [],
   youtubeApiKey: "",
   overlay: defaultOverlaySettings,
+  updates: defaultUpdateSettings,
   twitchAuth: defaultTwitchAuth,
   youtubeAuth: defaultYouTubeAuth,
 };
+
+type LocalServerOptions = {
+  currentVersion?: string;
+  appPath?: string;
+  isPackaged?: boolean;
+  quitApp?: () => void;
+};
+
+let currentAppVersion = "0.0.0";
+let currentAppPath = "";
+let currentIsPackaged = false;
+let quitAppCallback: (() => void) | null = null;
+let cachedUpdateCheck: UpdateCheckResult | null = null;
 
 let appSettings = loadSettings();
 let messages: ChatMessage[] = [];
@@ -151,6 +177,267 @@ function getContentType(fileName: string) {
   return "application/octet-stream";
 }
 
+function normalizeVersion(version: string) {
+  return version.trim().replace(/^v/i, "");
+}
+
+function compareVersions(currentVersion: string, latestVersion: string) {
+  const currentParts = normalizeVersion(currentVersion)
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+
+  const latestParts = normalizeVersion(latestVersion)
+    .split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+
+  const maxLength = Math.max(currentParts.length, latestParts.length);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const currentPart = currentParts[index] || 0;
+    const latestPart = latestParts[index] || 0;
+
+    if (latestPart > currentPart) return 1;
+    if (latestPart < currentPart) return -1;
+  }
+
+  return 0;
+}
+
+function findBestReleaseAsset(
+  assets: Array<{
+    name?: string;
+    browser_download_url?: string;
+  }>
+) {
+  const portableAsset = assets.find((asset) => {
+    const name = asset.name?.toLowerCase() || "";
+
+    return (
+      name.endsWith(".exe") &&
+      (name.includes("portable") ||
+        name.includes("stream chat hub") ||
+        name.includes("stream-chat-hub"))
+    );
+  });
+
+  if (portableAsset?.browser_download_url) {
+    return portableAsset.browser_download_url;
+  }
+
+  const exeAsset = assets.find((asset) => {
+    const name = asset.name?.toLowerCase() || "";
+    return name.endsWith(".exe");
+  });
+
+  return exeAsset?.browser_download_url || null;
+}
+
+async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
+  const now = Date.now();
+
+  if (
+    !force &&
+    cachedUpdateCheck &&
+    now - cachedUpdateCheck.checkedAt < 10 * 60 * 1000
+  ) {
+    return cachedUpdateCheck;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "User-Agent": "Stream-Chat-Hub",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub returned ${response.status}`);
+    }
+
+    const release = (await response.json()) as {
+      tag_name?: string;
+      html_url?: string;
+      body?: string;
+      assets?: Array<{
+        name?: string;
+        browser_download_url?: string;
+      }>;
+    };
+
+    const latestVersion = release.tag_name
+      ? normalizeVersion(release.tag_name)
+      : null;
+
+    const updateAvailable = latestVersion
+      ? compareVersions(currentAppVersion, latestVersion) > 0
+      : false;
+
+    const result: UpdateCheckResult = {
+      ok: true,
+      currentVersion: currentAppVersion,
+      latestVersion,
+      updateAvailable,
+      releaseUrl: release.html_url || null,
+      downloadUrl: findBestReleaseAsset(release.assets || []),
+      releaseNotes: release.body || "",
+      checkedAt: now,
+    };
+
+    cachedUpdateCheck = result;
+    return result;
+  } catch (error) {
+    const result: UpdateCheckResult = {
+      ok: false,
+      currentVersion: currentAppVersion,
+      latestVersion: null,
+      updateAvailable: false,
+      releaseUrl: null,
+      downloadUrl: null,
+      releaseNotes: "",
+      checkedAt: now,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Не удалось проверить обновления",
+    };
+
+    cachedUpdateCheck = result;
+    return result;
+  }
+}
+
+async function downloadFile(url: string, targetPath: string) {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Stream-Chat-Hub",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Download failed: ${response.status}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  fs.writeFileSync(targetPath, Buffer.from(arrayBuffer));
+}
+
+function escapeCmdPath(value: string) {
+  return value.replaceAll('"', '\\"');
+}
+
+function createPortableUpdateScript(options: {
+  currentExePath: string;
+  newExePath: string;
+  currentPid: number;
+}) {
+  const scriptPath = path.join(
+    os.tmpdir(),
+    `stream-chat-hub-update-${Date.now()}.cmd`
+  );
+
+  const currentExePath = escapeCmdPath(options.currentExePath);
+  const newExePath = escapeCmdPath(options.newExePath);
+  const currentPid = options.currentPid;
+
+  const script = [
+    "@echo off",
+    "setlocal",
+    `set CURRENT_PID=${currentPid}`,
+    `set CURRENT_EXE="${currentExePath}"`,
+    `set NEW_EXE="${newExePath}"`,
+    "",
+    ":wait",
+    'tasklist /FI "PID eq %CURRENT_PID%" | find "%CURRENT_PID%" > nul',
+    "if not errorlevel 1 (",
+    "  timeout /t 1 /nobreak > nul",
+    "  goto wait",
+    ")",
+    "",
+    "timeout /t 1 /nobreak > nul",
+    "copy /Y %NEW_EXE% %CURRENT_EXE%",
+    "start \"\" %CURRENT_EXE%",
+    "del %NEW_EXE%",
+    "del \"%~f0\"",
+    "endlocal",
+    "",
+  ].join("\r\n");
+
+  fs.writeFileSync(scriptPath, script, "utf-8");
+
+  return scriptPath;
+}
+
+async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstallResult> {
+  try {
+    if (!currentIsPackaged) {
+      return {
+        ok: false,
+        error: "Обновление доступно только в собранной версии приложения",
+      };
+    }
+
+    if (process.platform !== "win32") {
+      return {
+        ok: false,
+        error: "Автообновление portable пока доступно только на Windows",
+      };
+    }
+
+    if (!currentAppPath || !fs.existsSync(currentAppPath)) {
+      return {
+        ok: false,
+        error: "Не удалось определить путь текущего приложения",
+      };
+    }
+
+    const tempDir = path.join(os.tmpdir(), "stream-chat-hub-updates");
+
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const downloadedExePath = path.join(tempDir, "Stream Chat Hub.new.exe");
+
+    await downloadFile(downloadUrl, downloadedExePath);
+
+    const scriptPath = createPortableUpdateScript({
+      currentExePath: currentAppPath,
+      newExePath: downloadedExePath,
+      currentPid: process.pid,
+    });
+
+    spawn("cmd.exe", ["/c", scriptPath], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    }).unref();
+
+    setTimeout(() => {
+      if (quitAppCallback) {
+        quitAppCallback();
+      } else {
+        process.exit(0);
+      }
+    }, 300);
+
+    return {
+      ok: true,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Не удалось установить обновление",
+    };
+  }
+}
+
 function loadSettings(): AppSettings {
   try {
     ensureSettingsDir();
@@ -192,13 +479,25 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
           ? settings.overlay.backgroundColor
           : defaultOverlaySettings.backgroundColor,
       styleMode: settings.overlay?.styleMode || "messageBubble",
-showStyleInApp: Boolean(settings.overlay?.showStyleInApp),
-bubbleMediaUrl: settings.overlay?.bubbleMediaUrl || "",
-bubbleMediaType: settings.overlay?.bubbleMediaType || "none",
+      showStyleInApp: Boolean(settings.overlay?.showStyleInApp),
+      bubbleMediaUrl: settings.overlay?.bubbleMediaUrl || "",
+      bubbleMediaType: settings.overlay?.bubbleMediaType || "none",
       filters: {
         ...defaultOverlaySettings.filters,
         ...(settings.overlay?.filters || {}),
       },
+    },
+    updates: {
+      ...defaultUpdateSettings,
+      ...(settings.updates || {}),
+      autoCheckEnabled:
+        typeof settings.updates?.autoCheckEnabled === "boolean"
+          ? settings.updates.autoCheckEnabled
+          : defaultUpdateSettings.autoCheckEnabled,
+      skippedVersion:
+        typeof settings.updates?.skippedVersion === "string"
+          ? settings.updates.skippedVersion
+          : defaultUpdateSettings.skippedVersion,
     },
     twitchAuth: {
       ...defaultTwitchAuth,
@@ -443,7 +742,10 @@ function makeOverlayHtml() {
     }
 
     .highlight {
-      color: #fde68a;
+      padding: 0 4px;
+      border-radius: 5px;
+      color: #111827;
+      background: #fde68a;
       font-weight: 950;
     }
   </style>
@@ -909,7 +1211,12 @@ async function getUsableYouTubeAuth() {
   return refreshYouTubeToken(auth);
 }
 
-export async function startLocalServer() {
+export async function startLocalServer(options?: LocalServerOptions) {
+  currentAppVersion = options?.currentVersion || currentAppVersion;
+  currentAppPath = options?.appPath || currentAppPath;
+  currentIsPackaged = Boolean(options?.isPackaged);
+  quitAppCallback = options?.quitApp || null;
+
   const server = Fastify({ logger: false });
 
   await server.register(websocket);
@@ -923,6 +1230,62 @@ export async function startLocalServer() {
 
   server.options("*", async (_request, reply) => {
     reply.send();
+  });
+
+  server.get("/updates/check", async (request) => {
+    const query = request.query as {
+      force?: string;
+    };
+
+    return checkForUpdates(query.force === "true");
+  });
+
+  server.get("/updates/settings", async () => {
+    return appSettings.updates || defaultUpdateSettings;
+  });
+
+  server.post("/updates/settings", async (request) => {
+    const body = request.body as Partial<UpdateSettings>;
+
+    appSettings.updates = {
+      ...defaultUpdateSettings,
+      ...(appSettings.updates || {}),
+      ...(body || {}),
+      autoCheckEnabled:
+        typeof body.autoCheckEnabled === "boolean"
+          ? body.autoCheckEnabled
+          : appSettings.updates?.autoCheckEnabled ??
+            defaultUpdateSettings.autoCheckEnabled,
+      skippedVersion:
+        typeof body.skippedVersion === "string"
+          ? body.skippedVersion
+          : appSettings.updates?.skippedVersion ??
+            defaultUpdateSettings.skippedVersion,
+    };
+
+    saveSettings(appSettings);
+
+    return {
+      ok: true,
+      updates: appSettings.updates,
+    };
+  });
+
+  server.post("/updates/install", async (request) => {
+    const body = request.body as {
+      downloadUrl?: string;
+    };
+
+    const downloadUrl = body.downloadUrl || cachedUpdateCheck?.downloadUrl;
+
+    if (!downloadUrl) {
+      return {
+        ok: false,
+        error: "Нет ссылки для скачивания обновления",
+      } satisfies UpdateInstallResult;
+    }
+
+    return installPortableUpdate(downloadUrl);
   });
 
   server.get("/overlay-assets/:fileName", async (request, reply) => {

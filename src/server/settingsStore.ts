@@ -11,6 +11,7 @@ import type {
   OverlayPosition,
   OverlaySettings,
   OverlayStyleMode,
+  UpdateSettings,
 } from "../shared/types";
 
 const SETTINGS_DIR = path.join(os.homedir(), ".stream-chat-hub");
@@ -21,6 +22,11 @@ const DEFAULT_FILTER_SETTINGS: OverlayFilterSettings = {
   hideLinks: false,
   onlyWords: "",
   highlightWords: "",
+};
+
+const DEFAULT_UPDATE_SETTINGS: UpdateSettings = {
+  autoCheckEnabled: true,
+  skippedVersion: "",
 };
 
 const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
@@ -53,10 +59,12 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   sources: [],
   youtubeApiKey: "",
   overlay: DEFAULT_OVERLAY_SETTINGS,
+  updates: DEFAULT_UPDATE_SETTINGS,
 };
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
   const numberValue = Number(value);
+
   return Number.isFinite(numberValue)
     ? Math.min(max, Math.max(min, numberValue))
     : fallback;
@@ -71,14 +79,21 @@ function normalizeString(value: unknown, fallback = "") {
 }
 
 function normalizeHexColor(value: unknown, fallback = "#000000") {
-  if (typeof value !== "string") return fallback;
-  return /^#[0-9a-fA-F]{6}$/.test(value.trim()) ? value.trim() : fallback;
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+
+  return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed : fallback;
 }
 
 function normalizePosition(value: unknown): OverlayPosition {
-  return value === "center" || value === "right" || value === "left"
-    ? value
-    : "left";
+  if (value === "center" || value === "right" || value === "left") {
+    return value;
+  }
+
+  return "left";
 }
 
 function normalizeStyleMode(value: unknown): OverlayStyleMode {
@@ -90,26 +105,39 @@ function normalizeStyleMode(value: unknown): OverlayStyleMode {
     return value;
   }
 
-  if (value === "container") return "containerBubble";
-  if (value === "message") return "messageBubble";
+  if (value === "container") {
+    return "containerBubble";
+  }
+
+  if (value === "message") {
+    return "messageBubble";
+  }
 
   return "messageBubble";
 }
 
 function normalizeBubbleMediaType(value: unknown): OverlayBubbleMediaType {
-  return value === "image" || value === "video" || value === "none"
-    ? value
-    : "none";
+  if (value === "image" || value === "video" || value === "none") {
+    return value;
+  }
+
+  return "none";
 }
 
 function normalizeTwitchChannelName(channelName: unknown) {
-  return typeof channelName === "string"
-    ? channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase()
-    : "";
+  if (typeof channelName !== "string") {
+    return "";
+  }
+
+  return channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
 }
 
 function normalizeYouTubeInput(channelName: unknown) {
-  return typeof channelName === "string" ? channelName.trim() : "";
+  if (typeof channelName !== "string") {
+    return "";
+  }
+
+  return channelName.trim();
 }
 
 function normalizeSource(value: unknown): ChatSource | null {
@@ -125,7 +153,9 @@ function normalizeSource(value: unknown): ChatSource | null {
       ? normalizeTwitchChannelName(data.channelName)
       : normalizeYouTubeInput(data.channelName);
 
-  if (!channelName) return null;
+  if (!channelName) {
+    return null;
+  }
 
   return {
     id: typeof data.id === "string" && data.id ? data.id : randomUUID(),
@@ -136,20 +166,28 @@ function normalizeSource(value: unknown): ChatSource | null {
 }
 
 function normalizeSources(value: unknown): ChatSource[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
   const sources = value.map(normalizeSource).filter(Boolean) as ChatSource[];
   const uniqueSources = new Map<string, ChatSource>();
 
   for (const source of sources) {
-    uniqueSources.set(`${source.platform}:${source.channelName}`, source);
+    const key = `${source.platform}:${source.channelName}`;
+
+    if (!uniqueSources.has(key)) {
+      uniqueSources.set(key, source);
+    }
   }
 
   return Array.from(uniqueSources.values());
 }
 
 function migrateOldTwitchChannelNames(value: unknown): ChatSource[] {
-  if (!Array.isArray(value)) return [];
+  if (!Array.isArray(value)) {
+    return [];
+  }
 
   return value
     .map(normalizeTwitchChannelName)
@@ -165,7 +203,9 @@ function migrateOldTwitchChannelNames(value: unknown): ChatSource[] {
 function migrateOldTwitchChannelName(value: unknown): ChatSource[] {
   const channelName = normalizeTwitchChannelName(value);
 
-  if (!channelName) return [];
+  if (!channelName) {
+    return [];
+  }
 
   return [
     {
@@ -192,6 +232,21 @@ export function normalizeOverlayFilterSettings(
     highlightWords: normalizeString(
       data.highlightWords,
       DEFAULT_FILTER_SETTINGS.highlightWords
+    ),
+  };
+}
+
+export function normalizeUpdateSettings(value: unknown): UpdateSettings {
+  const data = value as Partial<UpdateSettings>;
+
+  return {
+    autoCheckEnabled: normalizeBoolean(
+      data.autoCheckEnabled,
+      DEFAULT_UPDATE_SETTINGS.autoCheckEnabled
+    ),
+    skippedVersion: normalizeString(
+      data.skippedVersion,
+      DEFAULT_UPDATE_SETTINGS.skippedVersion
     ),
   };
 }
@@ -294,6 +349,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     sources: migratedSources,
     youtubeApiKey: normalizeString(data.youtubeApiKey),
     overlay: normalizeOverlaySettings(data.overlay),
+    updates: normalizeUpdateSettings(data.updates),
     twitchAuth: data.twitchAuth,
     youtubeAuth: data.youtubeAuth,
   };

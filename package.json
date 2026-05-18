@@ -1,6 +1,6 @@
 {
   "name": "stream-chat-hub",
-  "version": "0.2.2",
+  "version": "0.3",
   "description": "Stream Chat Hub beta",
   "main": "dist-main/main/main.js",
   "author": "postdelik",
@@ -52,14 +52,14 @@
       "build/**/*"
     ],
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "artifactName": "${productName} ${version}.${ext}",
-      "icon": "build/icon.ico",
-      "signAndEditExecutable": false
-    },
+  "target": [
+    "nsis",
+    "portable"
+  ],
+  "artifactName": "${productName}.${ext}",
+  "icon": "build/icon.ico",
+  "signAndEditExecutable": false
+},
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

@@ -13,6 +13,28 @@ export type OverlayFilterSettings = {
   highlightWords: string;
 };
 
+export type UpdateSettings = {
+  autoCheckEnabled: boolean;
+  skippedVersion: string;
+};
+
+export type UpdateCheckResult = {
+  ok: boolean;
+  currentVersion: string;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+  releaseUrl: string | null;
+  downloadUrl: string | null;
+  releaseNotes: string;
+  checkedAt: number;
+  error?: string;
+};
+
+export type UpdateInstallResult = {
+  ok: boolean;
+  error?: string;
+};
+
 export type ChatMessage = {
   id: string;
   platform: ChatPlatform;
@@ -92,6 +114,7 @@ export type AppSettings = {
   sources: ChatSource[];
   youtubeApiKey: string;
   overlay: OverlaySettings;
+  updates: UpdateSettings;
   twitchAuth?: TwitchAuthState;
   youtubeAuth?: YouTubeAuthState;
 };

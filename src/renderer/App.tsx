@@ -11,6 +11,9 @@ import type {
   SafeYouTubeAuthState,
   TwitchConnectionStatus,
   TwitchViewersStatus,
+  UpdateCheckResult,
+  UpdateInstallResult,
+  UpdateSettings,
   YouTubeConnectionStatus,
 } from "../shared/types";
 import { languageStorageKey, overlayUrl } from "./constants";
@@ -29,6 +32,8 @@ import { MessageFiltersSection } from "./components/MessageFiltersSection";
 import { ObsLinkSection } from "./components/ObsLinkSection";
 import { SourcesSection, type AddSourceTab } from "./components/SourcesSection";
 import { TestOverlaySection } from "./components/TestOverlaySection";
+import { UpdatePromptModal } from "./components/UpdatePromptModal";
+import { UpdatesSection } from "./components/UpdatesSection";
 
 type OverlayPreset = "compact" | "standard" | "large" | "textOnly";
 
@@ -72,6 +77,11 @@ const defaultTwitchViewersStatus: TwitchViewersStatus = {
   totalViewers: 0,
   channels: [],
   error: null,
+};
+
+const defaultUpdateSettings: UpdateSettings = {
+  autoCheckEnabled: true,
+  skippedVersion: "",
 };
 
 const fallbackFonts = [
@@ -169,6 +179,19 @@ export function App() {
   const [filterOnlyWords, setFilterOnlyWords] = useState("");
   const [filterHighlightWords, setFilterHighlightWords] = useState("");
 
+  const [updateSettings, setUpdateSettings] =
+    useState<UpdateSettings>(defaultUpdateSettings);
+  const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult | null>(
+    null
+  );
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+  const [
+    disableUpdateCheckOnDecline,
+    setDisableUpdateCheckOnDecline,
+  ] = useState(false);
+
   const [copyStatus, setCopyStatus] = useState("");
   const [chatOnlyMode, setChatOnlyMode] = useState(false);
 
@@ -245,8 +268,9 @@ export function App() {
       sources,
       youtubeApiKey: "",
       overlay: overlaySettings,
+      updates: updateSettings,
     };
-  }, [sources, overlaySettings]);
+  }, [sources, overlaySettings, updateSettings]);
 
   async function loadSettingsFromServer() {
     const response = await fetch("http://localhost:3877/settings");
@@ -280,6 +304,8 @@ export function App() {
     setFilterHideLinks(data.overlay.filters.hideLinks);
     setFilterOnlyWords(data.overlay.filters.onlyWords);
     setFilterHighlightWords(data.overlay.filters.highlightWords);
+
+    setUpdateSettings(data.updates || defaultUpdateSettings);
 
     return data;
   }
@@ -316,6 +342,117 @@ export function App() {
       setTwitchViewersStatus(defaultTwitchViewersStatus);
       return defaultTwitchViewersStatus;
     }
+  }
+
+  async function checkUpdates(force = false, shouldShowPrompt = false) {
+    try {
+      setCheckingUpdates(true);
+
+      const response = await fetch(
+        `http://localhost:3877/updates/check${force ? "?force=true" : ""}`
+      );
+
+      const data = (await response.json()) as UpdateCheckResult;
+      setUpdateStatus(data);
+
+      if (shouldShowPrompt && data.updateAvailable) {
+        setShowUpdatePrompt(true);
+      }
+
+      return data;
+    } catch {
+      const failedResult: UpdateCheckResult = {
+        ok: false,
+        currentVersion: "unknown",
+        latestVersion: null,
+        updateAvailable: false,
+        releaseUrl: null,
+        downloadUrl: null,
+        releaseNotes: "",
+        checkedAt: Date.now(),
+        error: t("updatesCheckFailed"),
+      };
+
+      setUpdateStatus(failedResult);
+      return failedResult;
+    } finally {
+      setCheckingUpdates(false);
+    }
+  }
+
+  async function setAutoCheckUpdates(enabled: boolean) {
+    const nextSettings: UpdateSettings = {
+      ...updateSettings,
+      autoCheckEnabled: enabled,
+    };
+
+    setUpdateSettings(nextSettings);
+
+    try {
+      await fetch("http://localhost:3877/updates/settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(nextSettings),
+      });
+
+      setChatActionStatus(
+        enabled ? t("autoUpdatesEnabled") : t("autoUpdatesDisabled")
+      );
+    } catch {
+      setChatActionStatus(t("settingsSaveFailed"));
+    }
+  }
+
+  async function installUpdate() {
+    if (!updateStatus?.downloadUrl) {
+      setChatActionStatus(t("updateDownloadUnavailable"));
+      return;
+    }
+
+    try {
+      setInstallingUpdate(true);
+      setChatActionStatus(t("installingUpdate"));
+
+      const response = await fetch("http://localhost:3877/updates/install", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          downloadUrl: updateStatus.downloadUrl,
+        }),
+      });
+
+      const data = (await response.json()) as UpdateInstallResult;
+
+      if (!data.ok) {
+        setInstallingUpdate(false);
+        setChatActionStatus(data.error || t("updateInstallFailed"));
+        return;
+      }
+
+      setChatActionStatus(t("updateInstallStarted"));
+    } catch {
+      setInstallingUpdate(false);
+      setChatActionStatus(t("updateInstallFailed"));
+    }
+  }
+
+  async function declineUpdate() {
+    setShowUpdatePrompt(false);
+
+    if (!disableUpdateCheckOnDecline) {
+      return;
+    }
+
+    await setAutoCheckUpdates(false);
+    setChatActionStatus(t("enableUpdatesAgainHint"));
+  }
+
+  function closeUpdatePrompt() {
+    setShowUpdatePrompt(false);
   }
 
   function startTwitchLogin() {
@@ -637,9 +774,14 @@ export function App() {
   useEffect(() => {
     async function loadInitialSettings() {
       try {
-        await loadSettingsFromServer();
+        const settings = await loadSettingsFromServer();
+
         setSettingsLoaded(true);
         setSaveStatus(t("settingsLoaded"));
+
+        if (settings.updates?.autoCheckEnabled) {
+          void checkUpdates(false, true);
+        }
       } catch {
         setSettingsLoaded(true);
         setSaveStatus(t("settingsLoadFailed"));
@@ -807,39 +949,51 @@ export function App() {
 
   if (!language) {
     return (
-     <main className="languageScreen">
+      <main className="languageScreen">
         <section className="languageCard">
           <div className="languageLogo brandLogo">SCH</div>
 
           <h1>Stream Chat Hub</h1>
           <h2>Выберите язык / Choose language</h2>
-          <p>
-             Выберите язык интерфейса / Choose interface language
-          </p>
 
-      <div className="languageButtons">
-        <button
-          className="button"
-          type="button"
-          onClick={() => chooseLanguage("ru")}
-        >
-          Русский
-        </button>
+          <p>Выберите язык интерфейса сейчас.</p>
+          <p>Choose your interface language now.</p>
 
-        <button
-          className="button secondaryButton"
-          type="button"
-          onClick={() => chooseLanguage("en")}
-        >
-          English
-        </button>
-      </div>
-    </section>
-  </main>
-);
-}
+          <div className="languageButtons">
+            <button
+              className="button"
+              type="button"
+              onClick={() => chooseLanguage("ru")}
+            >
+              Русский
+            </button>
+
+            <button
+              className="button secondaryButton"
+              type="button"
+              onClick={() => chooseLanguage("en")}
+            >
+              English
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className={chatOnlyMode ? "app chatOnlyMode" : "app"}>
+      <UpdatePromptModal
+        t={t}
+        updateStatus={showUpdatePrompt ? updateStatus : null}
+        installingUpdate={installingUpdate}
+        disableUpdateCheckOnDecline={disableUpdateCheckOnDecline}
+        setDisableUpdateCheckOnDecline={setDisableUpdateCheckOnDecline}
+        onInstallUpdate={installUpdate}
+        onDeclineUpdate={declineUpdate}
+        onCloseUpdatePrompt={closeUpdatePrompt}
+      />
+
       <aside className="sidebar">
         <h1>{t("appTitle")}</h1>
 
@@ -945,6 +1099,16 @@ export function App() {
           t={t}
           mockOverlayEnabled={mockOverlayEnabled}
           setMockOverlayTestEnabled={setMockOverlayTestEnabled}
+        />
+
+        <UpdatesSection
+          t={t}
+          updateStatus={updateStatus}
+          updateSettings={updateSettings}
+          checkingUpdates={checkingUpdates}
+          installingUpdate={installingUpdate}
+          checkUpdates={checkUpdates}
+          setAutoCheckUpdates={setAutoCheckUpdates}
         />
 
         <AboutSection

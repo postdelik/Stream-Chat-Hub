@@ -15,8 +15,6 @@ function getIconPath() {
 }
 
 async function createWindow() {
-  const iconPath = getIconPath();
-
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -24,7 +22,7 @@ async function createWindow() {
     minHeight: 620,
     backgroundColor: "#080714",
     show: false,
-    icon: iconPath,
+    icon: getIconPath(),
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
@@ -82,7 +80,15 @@ app.whenReady().then(async () => {
 
   Menu.setApplicationMenu(null);
 
-  await startLocalServer();
+  await startLocalServer({
+    currentVersion: app.getVersion(),
+    appPath: process.execPath,
+    isPackaged: app.isPackaged,
+    quitApp: () => {
+      app.quit();
+    },
+  });
+
   await createWindow();
 });
 

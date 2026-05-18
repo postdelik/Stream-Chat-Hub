@@ -94,6 +94,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     showPlatformIcon: "Показывать иконку платформы",
     showChannelName: "Показывать канал",
     showAuthorName: "Показывать имя автора",
+    showStyleInApp: "Показывать стиль в приложении",
 
     styleMode: "Режим отображения",
     styleModeColor: "Цвет",
@@ -107,6 +108,10 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     styleFileTitle: "Файл стиля",
     styleSizeHint:
       "Рекомендуемый размер: 900×220 для сообщений, 900×700 для общего бабла. Безопасная зона текста: 60–90 px от краёв.",
+    styleSizeHintContainer:
+      "Рекомендуемый размер: 900×700 px. Безопасная зона текста: 60–90 px от краёв.",
+    styleSizeHintMessage:
+      "Рекомендуемый размер: 900×220 px. Безопасная зона текста: 60–90 px от краёв.",
     chooseStyleFile: "Выбрать PNG / WebM / MOV",
     clearStyleFile: "Очистить стиль",
     uploadingStyle: "Загрузка стиля...",
@@ -123,6 +128,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     hideLinks: "Скрывать ссылки",
     onlyWords: "Показывать только сообщения со словами",
     highlightWords: "Подсвечивать слова",
+    commaSeparatedWordsHint: "Слова вводятся через запятую.",
 
     obsLinkTitle: "Ссылка для OBS",
     obsLink: "Ссылка для OBS",
@@ -143,6 +149,43 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     testOverlaySwitchFailed: "Не удалось переключить тест overlay",
     testOverlayPart: "тест overlay",
 
+    updatesTitle: "Обновления",
+    updatesEnabledBadge: "включено",
+    updatesDisabledBadge: "выключено",
+    updateAvailableBadge: "доступно",
+    upToDateBadge: "актуально",
+    autoCheckUpdates: "Автоматически проверять обновления",
+    autoUpdatesEnabled: "Проверка обновлений включена",
+    autoUpdatesDisabled: "Проверка обновлений выключена",
+    autoUpdatesDisabledHint:
+      "Приложение не будет проверять обновления при запуске.",
+    checkingUpdates: "Проверяю обновления...",
+    updatesNotChecked: "Обновления ещё не проверялись",
+    currentVersion: "Текущая версия",
+    latestVersion: "Последняя версия",
+    newVersionAvailable: "Доступна новая версия приложения",
+    appIsUpToDate: "Установлена актуальная версия",
+    checkUpdates: "Проверить",
+    openRelease: "Открыть релиз",
+    downloadUpdate: "Скачать обновление",
+    updatesCheckFailed: "Не удалось проверить обновления",
+
+    updatePromptTitle: "Доступна новая версия",
+    updatePromptText:
+      "Найдена новая версия Stream Chat Hub. Хотите обновить приложение сейчас?",
+    updateNow: "Обновить",
+    notNow: "Нет",
+    disableUpdateCheck: "Выключить проверку обновлений",
+    enableUpdatesAgainHint:
+      "Проверку обновлений можно снова включить во вкладке «Обновления».",
+    releaseNotes: "Что нового",
+    updateDownloadUnavailable: "Файл обновления недоступен",
+    installingUpdate: "Устанавливаю обновление...",
+    updateInstallStarted:
+      "Обновление запущено. Приложение закроется и откроется заново.",
+    updateInstallFailed: "Не удалось установить обновление",
+    close: "Закрыть",
+
     aboutTitle: "О проекте и контакты",
     aboutText: "Локальный инструмент для объединения чатов и вывода overlay в OBS.",
     projectGithub: "GitHub проекта",
@@ -156,10 +199,6 @@ export const translations: Record<AppLanguage, TranslationMap> = {
 
     connectingSources: "Подключаю источники...",
     connectSourcesFailed: "Не удалось подключить источники",
-    commaSeparatedWordsHint: "Слова вводятся через запятую.",
-    showStyleInApp: "Показывать стиль в приложении",
-    styleSizeHintContainer: "Рекомендуемый размер: 900×700 px. Безопасная зона текста: 60–90 px от краёв.",
-    styleSizeHintMessage: "Рекомендуемый размер: 900×220 px. Безопасная зона текста: 60–90 px от краёв.",
   },
 
   en: {
@@ -253,6 +292,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     showPlatformIcon: "Show platform icon",
     showChannelName: "Show channel",
     showAuthorName: "Show author name",
+    showStyleInApp: "Show style in app",
 
     styleMode: "Display mode",
     styleModeColor: "Color",
@@ -266,6 +306,10 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     styleFileTitle: "Style file",
     styleSizeHint:
       "Recommended size: 900×220 for messages, 900×700 for shared bubble. Text safe area: 60–90 px from edges.",
+    styleSizeHintContainer:
+      "Recommended size: 900×700 px. Text safe area: 60–90 px from edges.",
+    styleSizeHintMessage:
+      "Recommended size: 900×220 px. Text safe area: 60–90 px from edges.",
     chooseStyleFile: "Choose PNG / WebM / MOV",
     clearStyleFile: "Clear style",
     uploadingStyle: "Uploading style...",
@@ -282,6 +326,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     hideLinks: "Hide links",
     onlyWords: "Show only messages with words",
     highlightWords: "Highlight words",
+    commaSeparatedWordsHint: "Enter words separated by commas.",
 
     obsLinkTitle: "OBS Link",
     obsLink: "OBS link",
@@ -302,6 +347,43 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     testOverlaySwitchFailed: "Failed to switch overlay test",
     testOverlayPart: "overlay test",
 
+    updatesTitle: "Updates",
+    updatesEnabledBadge: "enabled",
+    updatesDisabledBadge: "disabled",
+    updateAvailableBadge: "available",
+    upToDateBadge: "up to date",
+    autoCheckUpdates: "Automatically check for updates",
+    autoUpdatesEnabled: "Update checks enabled",
+    autoUpdatesDisabled: "Update checks disabled",
+    autoUpdatesDisabledHint:
+      "The app will not check for updates on startup.",
+    checkingUpdates: "Checking for updates...",
+    updatesNotChecked: "Updates have not been checked yet",
+    currentVersion: "Current version",
+    latestVersion: "Latest version",
+    newVersionAvailable: "A new app version is available",
+    appIsUpToDate: "You are using the latest version",
+    checkUpdates: "Check",
+    openRelease: "Open release",
+    downloadUpdate: "Download update",
+    updatesCheckFailed: "Failed to check for updates",
+
+    updatePromptTitle: "New version available",
+    updatePromptText:
+      "A new version of Stream Chat Hub was found. Do you want to update the app now?",
+    updateNow: "Update",
+    notNow: "No",
+    disableUpdateCheck: "Disable update checks",
+    enableUpdatesAgainHint:
+      "You can enable update checks again in the Updates section.",
+    releaseNotes: "Release notes",
+    updateDownloadUnavailable: "Update file is unavailable",
+    installingUpdate: "Installing update...",
+    updateInstallStarted:
+      "Update started. The app will close and reopen automatically.",
+    updateInstallFailed: "Failed to install update",
+    close: "Close",
+
     aboutTitle: "About and contacts",
     aboutText: "A local tool for combining chats and showing an OBS overlay.",
     projectGithub: "Project GitHub",
@@ -315,9 +397,5 @@ export const translations: Record<AppLanguage, TranslationMap> = {
 
     connectingSources: "Connecting sources...",
     connectSourcesFailed: "Failed to connect sources",
-    commaSeparatedWordsHint: "Enter words separated by commas.",
-    showStyleInApp: "Show style in app",
-    styleSizeHintContainer: "Recommended size: 900×700 px. Text safe area: 60–90 px from edges.",
-    styleSizeHintMessage: "Recommended size: 900×220 px. Text safe area: 60–90 px from edges.",
   },
 };

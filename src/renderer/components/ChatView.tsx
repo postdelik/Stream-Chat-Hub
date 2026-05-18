@@ -142,6 +142,32 @@ function renderAppBubbleMedia(overlay: OverlaySettings) {
   return <img className="appBubbleMedia" src={overlay.bubbleMediaUrl} alt="" />;
 }
 
+function EyeIcon() {
+  return (
+    <svg
+      className="viewerCounterIcon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="2.6"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export function ChatView({
   messages,
   messagesEndRef,
@@ -190,7 +216,7 @@ export function ChatView({
               "Нет подключённых Twitch-каналов"
             }
           >
-            <span>👁</span>
+            <EyeIcon />
             <strong>{formatViewerCount(twitchViewersStatus.totalViewers)}</strong>
           </div>
 
@@ -213,14 +239,14 @@ export function ChatView({
       </header>
 
       <div
-  className={
-    overlaySettings.showStyleInApp &&
-    overlaySettings.styleMode === "containerBubble"
-      ? "messages appStyledChat"
-      : "messages"
-  }
-  style={getAppChatStyle(overlaySettings)}
->
+        className={
+          overlaySettings.showStyleInApp &&
+          overlaySettings.styleMode === "containerBubble"
+            ? "messages appStyledChat"
+            : "messages"
+        }
+        style={getAppChatStyle(overlaySettings)}
+      >
         {showContainerMedia && renderAppBubbleMedia(overlaySettings)}
 
         {messages.map((message) => (
