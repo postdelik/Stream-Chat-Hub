@@ -1108,3 +1108,27 @@ code {
   line-height: 1;
   font-size: 14px;
 }
+.chatEmote {
+  display: inline-block;
+  width: auto;
+  height: 1.45em;
+  min-height: 24px;
+  max-height: 34px;
+  margin: 0 2px;
+  vertical-align: middle;
+  object-fit: contain;
+}
+.sourceCard .button,
+.sourceCard button {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.sourceCard .button {
+  min-height: 44px;
+  padding: 10px 14px;
+}
+.sourceCard .field + .button {
+  margin-top: 10px;
+}

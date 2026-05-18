@@ -13,6 +13,15 @@ export type OverlayFilterSettings = {
   highlightWords: string;
 };
 
+export type ChatMessageEmote = {
+  id: string;
+  name: string;
+  start: number;
+  end: number;
+  url: string;
+  platform: "twitch" | "youtube" | "thirdParty";
+};
+
 export type UpdateSettings = {
   autoCheckEnabled: boolean;
   skippedVersion: string;
@@ -42,6 +51,7 @@ export type ChatMessage = {
   authorName: string;
   text: string;
   timestamp: number;
+  emotes?: ChatMessageEmote[];
 };
 
 export type ChatSource = {

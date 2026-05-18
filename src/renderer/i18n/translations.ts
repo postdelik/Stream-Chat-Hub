@@ -36,7 +36,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     loggedInAs: "выполнен как",
     notLoggedIn: "не выполнен",
 
-    publicTwitchRead: "Публичное чтение Twitch",
+    publicTwitchRead: "Чтение Twitch без логина",
     publicTwitchReadHint: "Добавь канал Twitch для чтения чата без входа.",
     twitchChannel: "Twitch-канал",
     twitchChannelPlaceholder: "например postdelik",

@@ -1,5 +1,6 @@
 import type {
   ChatMessage,
+  ChatMessageEmote,
   TwitchAuthState,
   TwitchConnectionStatus,
 } from "../shared/types";
@@ -11,6 +12,7 @@ type TwitchUserState = {
   "display-name"?: string;
   badges?: Record<string, string>;
   id?: string;
+  emotes?: Record<string, string[]> | null;
 };
 
 type TwitchClientLike = {
@@ -47,6 +49,48 @@ function normalizeOAuthToken(token: string) {
   }
 
   return `oauth:${trimmedToken}`;
+}
+
+function getTwitchEmoteUrl(emoteId: string) {
+  return `https://static-cdn.jtvnw.net/emoticons/v2/${emoteId}/default/dark/2.0`;
+}
+
+function parseTwitchEmotes(
+  messageText: string,
+  userstate: TwitchUserState
+): ChatMessageEmote[] {
+  const emotes = userstate.emotes;
+
+  if (!emotes) {
+    return [];
+  }
+
+  const parsedEmotes: ChatMessageEmote[] = [];
+
+  for (const [emoteId, positions] of Object.entries(emotes)) {
+    for (const position of positions) {
+      const [startRaw, endRaw] = position.split("-");
+      const start = Number.parseInt(startRaw, 10);
+      const end = Number.parseInt(endRaw, 10);
+
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        continue;
+      }
+
+      const name = messageText.slice(start, end + 1);
+
+      parsedEmotes.push({
+        id: emoteId,
+        name,
+        start,
+        end,
+        url: getTwitchEmoteUrl(emoteId),
+        platform: "twitch",
+      });
+    }
+  }
+
+  return parsedEmotes.sort((a, b) => a.start - b.start);
 }
 
 export class TwitchChatClient {
@@ -178,32 +222,39 @@ export class TwitchChatClient {
       });
 
       client.on(
-  "message",
-  (
-    channel: string,
-    userstate: TwitchUserState,
-    messageText: string,
-    self: boolean
-  ) => {
-    const channelName = normalizeChannelName(channel);
+        "message",
+        (
+          channel: string,
+          userstate: TwitchUserState,
+          messageText: string,
+          self: boolean
+        ) => {
+          if (self) {
+            return;
+          }
 
-    const authorName =
-      userstate["display-name"] || userstate.username || "unknown";
+          const channelName = normalizeChannelName(channel);
 
-    console.log(
-      `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`
-    );
+          const authorName =
+            userstate["display-name"] || userstate.username || "unknown";
 
-    this.onMessage({
-      id: userstate.id || createMessageId(),
-      platform: "twitch",
-      channelName,
-      authorName,
-      text: messageText,
-      timestamp: Date.now(),
-    });
-  }
-);
+          const emotes = parseTwitchEmotes(messageText, userstate);
+
+          console.log(
+            `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`
+          );
+
+          this.onMessage({
+            id: userstate.id || createMessageId(),
+            platform: "twitch",
+            channelName,
+            authorName,
+            text: messageText,
+            timestamp: Date.now(),
+            emotes,
+          });
+        }
+      );
 
       await client.connect();
 

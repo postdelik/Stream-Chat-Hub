@@ -748,6 +748,16 @@ function makeOverlayHtml() {
       background: #fde68a;
       font-weight: 950;
     }
+    .emote {
+     display: inline-block;
+     width: auto;
+     height: 1.45em;
+     min-height: 24px;
+     max-height: 42px;
+     margin: 0 2px;
+     vertical-align: middle;
+     object-fit: contain;
+}
   </style>
 </head>
 <body>
@@ -840,7 +850,60 @@ function makeOverlayHtml() {
 
       return result;
     }
+function renderTextWithEmotes(text, emotes) {
+  const validEmotes = Array.isArray(emotes)
+    ? emotes
+        .filter((emote) => {
+          return (
+            Number.isFinite(emote.start) &&
+            Number.isFinite(emote.end) &&
+            emote.start >= 0 &&
+            emote.end >= emote.start &&
+            emote.end < text.length &&
+            emote.url
+          );
+        })
+        .sort((a, b) => a.start - b.start)
+    : [];
 
+  if (validEmotes.length === 0) {
+    return highlightText(text);
+  }
+
+  let result = "";
+  let cursor = 0;
+
+  for (const emote of validEmotes) {
+    if (emote.start < cursor) {
+      continue;
+    }
+
+    const beforeText = text.slice(cursor, emote.start);
+
+    if (beforeText) {
+      result += highlightText(beforeText);
+    }
+
+    result +=
+      '<img class="emote" src="' +
+      escapeAttr(emote.url) +
+      '" alt="' +
+      escapeAttr(emote.name || "emote") +
+      '" title="' +
+      escapeAttr(emote.name || "emote") +
+      '" />';
+
+    cursor = emote.end + 1;
+  }
+
+  const restText = text.slice(cursor);
+
+  if (restText) {
+    result += highlightText(restText);
+  }
+
+  return result;
+}
     function createBubbleMedia() {
       const overlay = settings.overlay;
 
@@ -946,7 +1009,7 @@ function makeOverlayHtml() {
                   '<span class="meta">',
                     parts.join(""),
                   '</span>',
-                  '<span class="text">' + highlightText(message.text) + '</span>',
+                  '<span class="text">' + renderTextWithEmotes(message.text, message.emotes) + '</span>',
                 '</div>',
               '</div>',
             '</div>'

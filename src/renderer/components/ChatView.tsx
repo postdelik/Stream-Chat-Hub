@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import type {
   ChatMessage,
+  ChatMessageEmote,
   OverlaySettings,
   TwitchViewersStatus,
 } from "../../shared/types";
@@ -33,10 +34,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function renderHighlightedText(
-  text: string,
-  filterHighlightWords: string
-): ReactNode {
+function renderHighlightedText(text: string, filterHighlightWords: string) {
   const words = parseHighlightWords(filterHighlightWords);
 
   if (words.length === 0) {
@@ -61,6 +59,71 @@ function renderHighlightedText(
       </span>
     );
   });
+}
+
+function renderTextWithHighlightsAndEmotes(
+  text: string,
+  emotes: ChatMessageEmote[] | undefined,
+  filterHighlightWords: string
+): ReactNode {
+  const sortedEmotes = [...(emotes || [])]
+    .filter(
+      (emote) =>
+        Number.isFinite(emote.start) &&
+        Number.isFinite(emote.end) &&
+        emote.start >= 0 &&
+        emote.end >= emote.start &&
+        emote.end < text.length
+    )
+    .sort((a, b) => a.start - b.start);
+
+  if (sortedEmotes.length === 0) {
+    return renderHighlightedText(text, filterHighlightWords);
+  }
+
+  const result: ReactNode[] = [];
+  let cursor = 0;
+
+  sortedEmotes.forEach((emote, index) => {
+    if (emote.start < cursor) {
+      return;
+    }
+
+    const beforeText = text.slice(cursor, emote.start);
+
+    if (beforeText) {
+      result.push(
+        <span key={`text-${index}-${cursor}`}>
+          {renderHighlightedText(beforeText, filterHighlightWords)}
+        </span>
+      );
+    }
+
+    result.push(
+      <img
+        className="chatEmote"
+        key={`emote-${emote.id}-${emote.start}-${index}`}
+        src={emote.url}
+        alt={emote.name}
+        title={emote.name}
+        loading="lazy"
+      />
+    );
+
+    cursor = emote.end + 1;
+  });
+
+  const restText = text.slice(cursor);
+
+  if (restText) {
+    result.push(
+      <span key={`text-rest-${cursor}`}>
+        {renderHighlightedText(restText, filterHighlightWords)}
+      </span>
+    );
+  }
+
+  return result;
 }
 
 function hexToRgba(hex: string, opacity: number) {
@@ -158,12 +221,7 @@ function EyeIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle
-        cx="12"
-        cy="12"
-        r="2.6"
-        fill="currentColor"
-      />
+      <circle cx="12" cy="12" r="2.6" fill="currentColor" />
     </svg>
   );
 }
@@ -270,7 +328,13 @@ export function ChatView({
                 <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
               </div>
 
-              <p>{renderHighlightedText(message.text, filterHighlightWords)}</p>
+              <p>
+                {renderTextWithHighlightsAndEmotes(
+                  message.text,
+                  message.emotes,
+                  filterHighlightWords
+                )}
+              </p>
             </div>
           </article>
         ))}
