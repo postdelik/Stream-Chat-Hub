@@ -9,6 +9,9 @@ import type {
   AppSettings,
   ChatMessage,
   ChatSource,
+  DiagnosticsArchiveResult,
+  DiagnosticsClearResult,
+  DiagnosticsOpenLogsResult,
   OverlayBubbleMediaType,
   OverlaySettings,
   SafeTwitchAuthState,
@@ -22,6 +25,12 @@ import type {
 import { TwitchChatClient } from "./twitchChat";
 import { YouTubeChatClient } from "./youtubeChat";
 import { getTwitchViewersStatus } from "./twitchViewers";
+import {
+  createDiagnosticsArchive,
+  getDiagnosticsInfo,
+} from "./diagnostics";
+import { clearLogFiles, getLogsDir, logger } from "./logger";
+import { dialog, shell } from "electron";
 
 const PORT = 3877;
 
@@ -235,6 +244,11 @@ function findBestReleaseAsset(
 async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
   const now = Date.now();
 
+  logger.updates("Checking for updates", {
+    force,
+    currentAppVersion,
+  });
+
   if (
     !force &&
     cachedUpdateCheck &&
@@ -287,6 +301,13 @@ async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
       checkedAt: now,
     };
 
+    logger.updates("Update check completed", {
+      currentVersion: result.currentVersion,
+      latestVersion: result.latestVersion,
+      updateAvailable: result.updateAvailable,
+      downloadUrl: result.downloadUrl,
+    });
+
     cachedUpdateCheck = result;
     return result;
   } catch (error) {
@@ -304,6 +325,10 @@ async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
           ? error.message
           : "Не удалось проверить обновления",
     };
+
+    logger.error("Update check failed", {
+      error: result.error,
+    });
 
     cachedUpdateCheck = result;
     return result;
@@ -373,6 +398,11 @@ function createPortableUpdateScript(options: {
 
 async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstallResult> {
   try {
+    logger.updates("Starting portable update install", {
+      downloadUrl,
+      currentAppPath,
+    });
+
     if (!currentIsPackaged) {
       return {
         ok: false,
@@ -404,10 +434,18 @@ async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstall
 
     await downloadFile(downloadUrl, downloadedExePath);
 
+    logger.updates("Update downloaded", {
+      downloadedExePath,
+    });
+
     const scriptPath = createPortableUpdateScript({
       currentExePath: currentAppPath,
       newExePath: downloadedExePath,
       currentPid: process.pid,
+    });
+
+    logger.updates("Update script created", {
+      scriptPath,
     });
 
     spawn("cmd.exe", ["/c", scriptPath], {
@@ -428,6 +466,10 @@ async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstall
       ok: true,
     };
   } catch (error) {
+    logger.error("Portable update install failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
     return {
       ok: false,
       error:
@@ -1280,6 +1322,12 @@ export async function startLocalServer(options?: LocalServerOptions) {
   currentIsPackaged = Boolean(options?.isPackaged);
   quitAppCallback = options?.quitApp || null;
 
+  logger.server("Starting local server", {
+    currentAppVersion,
+    currentAppPath,
+    currentIsPackaged,
+  });
+
   const server = Fastify({ logger: false });
 
   await server.register(websocket);
@@ -1293,6 +1341,138 @@ export async function startLocalServer(options?: LocalServerOptions) {
 
   server.options("*", async (_request, reply) => {
     reply.send();
+  });
+
+  server.get("/diagnostics/info", async () => {
+    return getDiagnosticsInfo(currentAppVersion);
+  });
+
+server.post("/diagnostics/archive", async () => {
+  try {
+    const defaultFileName = `stream-chat-hub-diagnostics-${new Date()
+      .toISOString()
+      .replaceAll(":", "-")
+      .replaceAll(".", "-")}.zip`;
+
+    const result = await dialog.showSaveDialog({
+      title: "Save diagnostics archive",
+      defaultPath: defaultFileName,
+      filters: [
+        {
+          name: "ZIP archive",
+          extensions: ["zip"],
+        },
+      ],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return {
+        ok: false,
+        archivePath: null,
+        error: "Сохранение архива отменено",
+      } satisfies DiagnosticsArchiveResult;
+    }
+
+    return createDiagnosticsArchive({
+      appVersion: currentAppVersion,
+      settings: appSettings,
+      archivePath: result.filePath,
+    }) satisfies DiagnosticsArchiveResult;
+  } catch (error) {
+    logger.error("Failed to choose diagnostics archive path", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return {
+      ok: false,
+      archivePath: null,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Не удалось выбрать место сохранения архива",
+    } satisfies DiagnosticsArchiveResult;
+  }
+});
+
+  server.post("/diagnostics/client-error", async (request) => {
+  const body = request.body as {
+    type?: string;
+    message?: string;
+    stack?: string;
+    source?: string;
+    lineno?: number;
+    colno?: number;
+    reason?: unknown;
+    userAgent?: string;
+    url?: string;
+    timestamp?: number;
+  };
+
+  logger.error("Renderer error", {
+    type: body.type || "unknown",
+    message: body.message || "",
+    stack: body.stack || "",
+    source: body.source || "",
+    lineno: body.lineno,
+    colno: body.colno,
+    reason: body.reason,
+    userAgent: body.userAgent,
+    url: body.url,
+    timestamp: body.timestamp,
+  });
+
+  return {
+    ok: true,
+  };
+});
+
+  server.post("/diagnostics/open-logs", async () => {
+    try {
+      const logsDir = getLogsDir();
+      await shell.openPath(logsDir);
+
+      logger.app("Logs folder opened", {
+        logsDir,
+      });
+
+      return {
+        ok: true,
+        logsDir,
+      } satisfies DiagnosticsOpenLogsResult;
+    } catch (error) {
+      logger.error("Failed to open logs folder", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return {
+        ok: false,
+        logsDir: getLogsDir(),
+        error:
+          error instanceof Error
+            ? error.message
+            : "Не удалось открыть папку логов",
+      } satisfies DiagnosticsOpenLogsResult;
+    }
+  });
+
+  server.post("/diagnostics/clear-logs", async () => {
+    try {
+      clearLogFiles();
+
+      return {
+        ok: true,
+      } satisfies DiagnosticsClearResult;
+    } catch (error) {
+      logger.error("Failed to clear logs", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      return {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Не удалось очистить логи",
+      } satisfies DiagnosticsClearResult;
+    }
   });
 
   server.get("/updates/check", async (request) => {
@@ -1714,4 +1894,7 @@ export async function startLocalServer(options?: LocalServerOptions) {
   });
 
   console.log(`Local server started: http://localhost:${PORT}`);
+  logger.server("Local server started", {
+    url: `http://localhost:${PORT}`,
+  });
 }

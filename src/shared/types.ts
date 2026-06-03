@@ -44,6 +44,40 @@ export type UpdateInstallResult = {
   error?: string;
 };
 
+export type DiagnosticsInfo = {
+  ok: boolean;
+  logsDir: string;
+  appVersion: string;
+  platform: string;
+  arch: string;
+  nodeVersion: string;
+  uptime: number;
+  logFiles: {
+    app: boolean;
+    server: boolean;
+    twitch: boolean;
+    updates: boolean;
+    errors: boolean;
+  };
+};
+
+export type DiagnosticsArchiveResult = {
+  ok: boolean;
+  archivePath: string | null;
+  error?: string;
+};
+
+export type DiagnosticsClearResult = {
+  ok: boolean;
+  error?: string;
+};
+
+export type DiagnosticsOpenLogsResult = {
+  ok: boolean;
+  logsDir: string;
+  error?: string;
+};
+
 export type ChatMessage = {
   id: string;
   platform: ChatPlatform;

@@ -26,10 +26,11 @@ import {
 import { clampNumber } from "./utils/numbers";
 import { AboutSection } from "./components/AboutSection";
 import { ChatView } from "./components/ChatView";
-import { OverlaySettingsSection } from "./components/OverlaySettingsSection";
-import { OverlayAppearanceSection } from "./components/OverlayAppearanceSection";
+import { DiagnosticsSection } from "./components/DiagnosticsSection";
 import { MessageFiltersSection } from "./components/MessageFiltersSection";
 import { ObsLinkSection } from "./components/ObsLinkSection";
+import { OverlayAppearanceSection } from "./components/OverlayAppearanceSection";
+import { OverlaySettingsSection } from "./components/OverlaySettingsSection";
 import { SourcesSection, type AddSourceTab } from "./components/SourcesSection";
 import { TestOverlaySection } from "./components/TestOverlaySection";
 import { UpdatePromptModal } from "./components/UpdatePromptModal";
@@ -187,18 +188,18 @@ export function App() {
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [installingUpdate, setInstallingUpdate] = useState(false);
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
-  const [
-    disableUpdateCheckOnDecline,
-    setDisableUpdateCheckOnDecline,
-  ] = useState(false);
+  const [disableUpdateCheckOnDecline, setDisableUpdateCheckOnDecline] =
+    useState(false);
 
   const [copyStatus, setCopyStatus] = useState("");
   const [chatOnlyMode, setChatOnlyMode] = useState(false);
 
   const enabledSourcesCount = sources.filter((source) => source.enabled).length;
+
   const twitchSourcesCount = sources.filter(
     (source) => source.enabled && source.platform === "twitch"
   ).length;
+
   const youtubeSourcesCount = sources.filter(
     (source) => source.enabled && source.platform === "youtube"
   ).length;
@@ -271,6 +272,33 @@ export function App() {
       updates: updateSettings,
     };
   }, [sources, overlaySettings, updateSettings]);
+
+  async function reportClientError(payload: {
+    type: string;
+    message?: string;
+    stack?: string;
+    source?: string;
+    lineno?: number;
+    colno?: number;
+    reason?: unknown;
+  }) {
+    try {
+      await fetch("http://localhost:3877/diagnostics/client-error", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...payload,
+          userAgent: navigator.userAgent,
+          url: window.location.href,
+          timestamp: Date.now(),
+        }),
+      });
+    } catch {
+      // ignore logging errors
+    }
+  }
 
   async function loadSettingsFromServer() {
     const response = await fetch("http://localhost:3877/settings");
@@ -772,6 +800,53 @@ export function App() {
   }
 
   useEffect(() => {
+    function handleWindowError(event: ErrorEvent) {
+      void reportClientError({
+        type: "window.error",
+        message: event.message,
+        stack: event.error instanceof Error ? event.error.stack : undefined,
+        source: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+      });
+    }
+
+    function handleUnhandledRejection(event: PromiseRejectionEvent) {
+      const reason = event.reason;
+
+      void reportClientError({
+        type: "window.unhandledrejection",
+        message:
+          reason instanceof Error
+            ? reason.message
+            : typeof reason === "string"
+              ? reason
+              : "Unhandled promise rejection",
+        stack: reason instanceof Error ? reason.stack : undefined,
+        reason:
+          reason instanceof Error
+            ? {
+                name: reason.name,
+                message: reason.message,
+                stack: reason.stack,
+              }
+            : String(reason),
+      });
+    }
+
+    window.addEventListener("error", handleWindowError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection
+      );
+    };
+  }, []);
+
+  useEffect(() => {
     async function loadInitialSettings() {
       try {
         const settings = await loadSettingsFromServer();
@@ -1110,6 +1185,8 @@ export function App() {
           checkUpdates={checkUpdates}
           setAutoCheckUpdates={setAutoCheckUpdates}
         />
+
+        <DiagnosticsSection t={t} />
 
         <AboutSection
           language={language}

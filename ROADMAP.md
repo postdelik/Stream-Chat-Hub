@@ -4,21 +4,23 @@
 
 # Русский
 
-# v0.3.0 — Auto Update System
+# v0.4.0 — Diagnostics & Logs
 
-- Проверка обновлений при запуске
-- Уведомление о новой версии
-- Кнопка “Скачать обновление”
-- Portable updater
-- Release notes внутри приложения
-- Отображение текущей версии
-- Stable/Beta каналы
-- Проверка совместимости настроек
-- Backup настроек перед обновлением
+- Скачать диагностический архив с логами
+- Выбор места сохранения архива с логами
+- Безопасный экспорт настроек без токенов
+- Информация о версии приложения
+- Информация о системе
+- Последние ошибки приложения
+- Логи local server
+- Логи подключения Twitch
+- Логи проверки обновлений
+- Кнопка “Открыть папку логов”
+- Кнопка “Очистить логи”
 
 ---
 
-# v0.4.0 — Emotes System
+# v0.5.0 — Emotes System
 
 - Twitch emotes
 - 7TV
@@ -33,7 +35,22 @@
 
 ---
 
-# v0.5.0 — Event Feed System
+# v0.6.0 — Onboarding / Micro Tutorial
+
+- Встроенное микро-обучение по основным секциям приложения
+- Автоматический запуск обучения после первого выбора языка
+- Подсветка ключевых блоков интерфейса
+- Короткие объяснения для основных секций
+- Обучение для добавления Twitch-канала
+- Обучение для OBS overlay ссылки
+- Обучение для настройки внешнего вида overlay
+- Обучение для тестового overlay
+- Возможность пропустить обучение
+- Возможность повторно запустить обучение из раздела “О проекте”
+
+---
+
+# v0.7.0 — Event Feed System
 
 - Follow events
 - Sub events
@@ -42,7 +59,7 @@
 - Cheers
 - Channel points
 - Отдельное окно событий
-- Сворачивание / разворачивание окна
+- Сворачивание / разворачивание окна событий
 - OBS overlay для событий
 - Тестовые события
 - Event filters
@@ -51,7 +68,7 @@
 
 ---
 
-# v0.6.0 — Stream Manager
+# v0.8.0 — Stream Manager
 
 - Изменение названия стрима
 - Изменение категории / игры
@@ -69,7 +86,7 @@
 
 ---
 
-# v0.7.0 — Dock Mode & Popout Windows
+# v0.9.0 — Dock Mode & Popout Windows
 
 - Always on top mode
 - Mini mode
@@ -83,41 +100,14 @@
 
 ---
 
-# v0.8.0 — Stream Notes & Session Tools
-
-- Stream notes
-- Заметки во время стрима
-- Timestamp markers
-- Stream session timer
-- Viewer session statistics
-- Session summary
-- Экспорт заметок
-- Автоматическое сохранение
-
----
-
-# v0.9.0 — Chat Statistics & Export
-
-- Message count
-- Top chatters
-- Activity graphs
-- Emote usage statistics
-- Export TXT
-- Export JSON
-- Export HTML
-- Chat replay mode
-- Replay overlay
-- Playback speed
-- Replay filters
-
----
-
 # v1.0.0 — Stable Twitch Release
 
 - Полностью стабильная Twitch-интеграция
 - OBS overlay system
 - Overlay customization
+- Diagnostics & logs
 - Emotes system
+- Onboarding / Micro Tutorial
 - Event system
 - Stream Manager
 - Chat moderation
@@ -134,21 +124,23 @@
 
 # English
 
-# v0.3.0 — Auto Update System
+# v0.4.0 — Diagnostics & Logs
 
-- Update checks on startup
-- New version notifications
-- “Download update” button
-- Portable updater
-- In-app release notes
-- Current version display
-- Stable/Beta channels
-- Settings compatibility checks
-- Automatic settings backup
+- Download diagnostics archive with logs
+- Choose where to save the logs archive
+- Safe settings export without tokens
+- App version information
+- System information
+- Latest app errors
+- Local server logs
+- Twitch connection logs
+- Update check logs
+- “Open logs folder” button
+- “Clear logs” button
 
 ---
 
-# v0.4.0 — Emotes System
+# v0.5.0 — Emotes System
 
 - Twitch emotes
 - 7TV
@@ -163,7 +155,22 @@
 
 ---
 
-# v0.5.0 — Event Feed System
+# v0.6.0 — Onboarding / Micro Tutorial
+
+- Built-in micro onboarding for the main app sections
+- Automatic onboarding start after the first language selection
+- Highlighting key interface blocks
+- Short explanations for main sections
+- Twitch channel setup tutorial
+- OBS overlay link tutorial
+- Overlay appearance tutorial
+- Test overlay tutorial
+- Ability to skip onboarding
+- Ability to restart onboarding from the About section
+
+---
+
+# v0.7.0 — Event Feed System
 
 - Follow events
 - Sub events
@@ -172,7 +179,7 @@
 - Cheers
 - Channel points
 - Separate events window
-- Expand/collapse controls
+- Expand/collapse event window
 - OBS event overlay
 - Test events
 - Event filters
@@ -181,7 +188,7 @@
 
 ---
 
-# v0.6.0 — Stream Manager
+# v0.8.0 — Stream Manager
 
 - Change stream title
 - Change category/game
@@ -199,7 +206,7 @@
 
 ---
 
-# v0.7.0 — Dock Mode & Popout Windows
+# v0.9.0 — Dock Mode & Popout Windows
 
 - Always on top mode
 - Mini mode
@@ -213,41 +220,14 @@
 
 ---
 
-# v0.8.0 — Stream Notes & Session Tools
-
-- Stream notes
-- Live notes during streams
-- Timestamp markers
-- Stream session timer
-- Viewer session statistics
-- Session summary
-- Notes export
-- Auto-save
-
----
-
-# v0.9.0 — Chat Statistics & Export
-
-- Message count
-- Top chatters
-- Activity graphs
-- Emote usage statistics
-- TXT export
-- JSON export
-- HTML export
-- Chat replay mode
-- Replay overlay
-- Playback speed
-- Replay filters
-
----
-
 # v1.0.0 — Stable Twitch Release
 
 - Stable Twitch integration
 - OBS overlay system
 - Overlay customization
+- Diagnostics & logs
 - Emotes system
+- Onboarding / Micro Tutorial
 - Event system
 - Stream Manager
 - Chat moderation

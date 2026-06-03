@@ -1,6 +1,6 @@
 {
   "name": "stream-chat-hub",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Stream Chat Hub beta",
   "main": "dist-main/main/main.js",
   "author": "postdelik",
@@ -21,6 +21,7 @@
     "@fastify/multipart": "^10.0.0",
     "@fastify/websocket": "^11.0.2",
     "@vitejs/plugin-react": "^5.1.1",
+    "adm-zip": "^0.5.17",
     "dotevn": "^0.0.1-security",
     "fastify": "^5.6.2",
     "nanoid": "^5.1.6",
@@ -39,32 +40,25 @@
     "vite": "^8.0.11",
     "wait-on": "^9.0.3"
   },
-  "build": {
-    "appId": "com.danila.streamchathub",
-    "productName": "Stream Chat Hub",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-main/**/*",
-      "package.json",
-      "build/**/*"
-    ],
-    "win": {
-  "target": [
-    "nsis",
-    "portable"
+"build": {
+  "appId": "com.postdelik.streamchathub",
+  "productName": "Stream Chat Hub",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-main/**/*",
+    "package.json",
+    "build/**/*"
   ],
-  "artifactName": "${productName}.${ext}",
-  "icon": "build/icon.ico",
-  "signAndEditExecutable": false
-},
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+  "win": {
+    "target": [
+      "portable"
+    ],
+    "artifactName": "${productName}.${ext}",
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": false
   }
+}
 }

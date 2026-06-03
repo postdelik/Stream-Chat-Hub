@@ -27,15 +27,18 @@ export function UpdatesSection({
   return (
     <CollapsibleSection title={t("updatesTitle")} badge={badge}>
       <div className="updatesBox">
-        <label className="toggleField">
-          <input
-            type="checkbox"
-            checked={updateSettings.autoCheckEnabled}
-            onChange={(event) => setAutoCheckUpdates(event.target.checked)}
-            disabled={installingUpdate}
-          />
-          <span>{t("autoCheckUpdates")}</span>
-        </label>
+        <label className="switchField">
+  <span>{t("autoCheckUpdates")}</span>
+
+  <input
+    type="checkbox"
+    checked={updateSettings.autoCheckEnabled}
+    onChange={(event) => setAutoCheckUpdates(event.target.checked)}
+    disabled={installingUpdate}
+  />
+
+  <span className="switchSlider" />
+</label>
 
         {!updateSettings.autoCheckEnabled && (
           <p className="hint">{t("autoUpdatesDisabledHint")}</p>

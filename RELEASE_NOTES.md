@@ -1,6 +1,68 @@
 # Release Notes
 
 ---
+# Stream Chat Hub v0.4.0
+
+## English
+
+### Added
+- Diagnostics and logs section.
+- Diagnostics archive export.
+- Save dialog for choosing where to save the diagnostics archive.
+- Safe settings export without Twitch and YouTube tokens.
+- App version and system information inside diagnostics archive.
+- Local server logs.
+- Update check logs.
+- Renderer error logging.
+- Main process error logging.
+- Clear logs button.
+- Initial native Twitch emotes rendering inside the app.
+- Initial native Twitch emotes rendering inside OBS overlay.
+
+### Improved
+- Updates auto-check option now uses a slider instead of a checkbox.
+- Diagnostics section layout.
+- Diagnostics buttons layout.
+- Application crash and error reporting.
+- README documentation.
+
+### Notes
+- Diagnostics archives are designed to help with support and bug reports.
+- Sensitive auth tokens are removed from exported settings.
+- Native Twitch emotes are included as an early foundation for the full Emotes System planned for v0.5.0.
+
+---
+
+## Русский
+
+### Добавлено
+- Секция “Диагностика и логи”.
+- Экспорт диагностического архива.
+- Окно выбора места сохранения диагностического архива.
+- Безопасный экспорт настроек без Twitch и YouTube токенов.
+- Информация о версии приложения и системе внутри диагностического архива.
+- Логи local server.
+- Логи проверки обновлений.
+- Логирование ошибок renderer.
+- Логирование ошибок main process.
+- Кнопка очистки логов.
+- Первичное отображение нативных Twitch emotes внутри приложения.
+- Первичное отображение нативных Twitch emotes в OBS overlay.
+
+### Улучшено
+- Настройка автопроверки обновлений теперь использует слайдер вместо checkbox.
+- Внешний вид секции диагностики.
+- Раскладка кнопок диагностики.
+- Логирование падений и ошибок приложения.
+- README документация.
+
+### Примечания
+- Диагностические архивы нужны для помощи с поддержкой и баг-репортами.
+- Auth-токены удаляются из экспортируемых настроек.
+- Нативные Twitch emotes добавлены как ранняя основа для полноценной Emotes System, запланированной на v0.5.0.
+
+---
+
 # Stream Chat Hub v0.4.0-alpha.1
 
 ## English
