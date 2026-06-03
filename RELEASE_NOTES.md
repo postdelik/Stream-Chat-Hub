@@ -1,6 +1,32 @@
 # Release Notes
 
 ---
+
+# Stream Chat Hub v0.4.1
+
+## English
+
+### Fixed
+- Fixed automatic chat reconnection after restarting the app.
+- Fixed chat messages being visually clipped in the app.
+- Improved portable updater window title and installation status messages.
+
+### Improved
+- Portable updater now shows readable update steps instead of an empty console window.
+
+---
+
+## Русский
+
+### Исправлено
+- Исправлено автоматическое подключение чата после перезапуска приложения.
+- Исправлено визуальное обрезание сообщений в чате приложения.
+- Улучшено окно portable updater: теперь есть нормальное название и статусы установки.
+
+### Улучшено
+- Portable updater теперь показывает понятные этапы обновления вместо пустого консольного окна.
+
+---
 # Stream Chat Hub v0.4.0
 
 ## English
