@@ -30,7 +30,7 @@ import {
   getDiagnosticsInfo,
 } from "./diagnostics";
 import { clearLogFiles, getLogsDir, logger } from "./logger";
-import { dialog, shell } from "electron";
+import { shell } from "electron";
 
 const PORT = 3877;
 
@@ -1347,84 +1347,12 @@ export async function startLocalServer(options?: LocalServerOptions) {
     return getDiagnosticsInfo(currentAppVersion);
   });
 
-server.post("/diagnostics/archive", async () => {
-  try {
-    const defaultFileName = `stream-chat-hub-diagnostics-${new Date()
-      .toISOString()
-      .replaceAll(":", "-")
-      .replaceAll(".", "-")}.zip`;
-
-    const result = await dialog.showSaveDialog({
-      title: "Save diagnostics archive",
-      defaultPath: defaultFileName,
-      filters: [
-        {
-          name: "ZIP archive",
-          extensions: ["zip"],
-        },
-      ],
-    });
-
-    if (result.canceled || !result.filePath) {
-      return {
-        ok: false,
-        archivePath: null,
-        error: "Сохранение архива отменено",
-      } satisfies DiagnosticsArchiveResult;
-    }
-
+  server.post("/diagnostics/archive", async () => {
     return createDiagnosticsArchive({
       appVersion: currentAppVersion,
       settings: appSettings,
-      archivePath: result.filePath,
     }) satisfies DiagnosticsArchiveResult;
-  } catch (error) {
-    logger.error("Failed to choose diagnostics archive path", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    return {
-      ok: false,
-      archivePath: null,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Не удалось выбрать место сохранения архива",
-    } satisfies DiagnosticsArchiveResult;
-  }
-});
-
-  server.post("/diagnostics/client-error", async (request) => {
-  const body = request.body as {
-    type?: string;
-    message?: string;
-    stack?: string;
-    source?: string;
-    lineno?: number;
-    colno?: number;
-    reason?: unknown;
-    userAgent?: string;
-    url?: string;
-    timestamp?: number;
-  };
-
-  logger.error("Renderer error", {
-    type: body.type || "unknown",
-    message: body.message || "",
-    stack: body.stack || "",
-    source: body.source || "",
-    lineno: body.lineno,
-    colno: body.colno,
-    reason: body.reason,
-    userAgent: body.userAgent,
-    url: body.url,
-    timestamp: body.timestamp,
   });
-
-  return {
-    ok: true,
-  };
-});
 
   server.post("/diagnostics/open-logs", async () => {
     try {

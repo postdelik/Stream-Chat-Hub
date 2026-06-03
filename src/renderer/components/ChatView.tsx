@@ -309,10 +309,14 @@ export function ChatView({
 
         {messages.map((message) => (
           <article
-            className="message appStyledMessage"
-            key={message.id}
-            style={getAppMessageStyle(overlaySettings)}
-          >
+  className={
+    overlaySettings.showStyleInApp
+      ? "message appStyledMessage"
+      : "message"
+  }
+  key={message.id}
+  style={getAppMessageStyle(overlaySettings)}
+>
             {showMessageMedia && renderAppBubbleMedia(overlaySettings)}
 
             <span

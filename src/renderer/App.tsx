@@ -847,27 +847,35 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    async function loadInitialSettings() {
-      try {
-        const settings = await loadSettingsFromServer();
+  async function loadInitialSettings() {
+    try {
+      const settings = await loadSettingsFromServer();
 
-        setSettingsLoaded(true);
-        setSaveStatus(t("settingsLoaded"));
+      setSettingsLoaded(true);
+      setSaveStatus(t("settingsLoaded"));
 
-        if (settings.updates?.autoCheckEnabled) {
-          void checkUpdates(false, true);
-        }
-      } catch {
-        setSettingsLoaded(true);
-        setSaveStatus(t("settingsLoadFailed"));
+      const enabledSources = (settings.sources || []).filter(
+        (source) => source.enabled
+      );
+
+      if (enabledSources.length > 0) {
+        void connectChatWithSources(settings.sources || []);
       }
-    }
 
-    loadInitialSettings();
-    loadTwitchAuthStatus();
-    loadYouTubeAuthStatus();
-    loadTwitchViewersStatus();
-  }, []);
+      if (settings.updates?.autoCheckEnabled) {
+        void checkUpdates(false, true);
+      }
+    } catch {
+      setSettingsLoaded(true);
+      setSaveStatus(t("settingsLoadFailed"));
+    }
+  }
+
+  loadInitialSettings();
+  loadTwitchAuthStatus();
+  loadYouTubeAuthStatus();
+  loadTwitchViewersStatus();
+}, []);
 
   useEffect(() => {
     async function loadMockStatus() {
