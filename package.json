@@ -30,6 +30,7 @@
     "tmi.js": "^1.8.5"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -40,25 +41,25 @@
     "vite": "^8.0.11",
     "wait-on": "^9.0.3"
   },
-"build": {
-  "appId": "com.postdelik.streamchathub",
-  "productName": "Stream Chat Hub",
-  "directories": {
-    "output": "release"
-  },
-  "files": [
-    "dist/**/*",
-    "dist-main/**/*",
-    "package.json",
-    "build/**/*"
-  ],
-  "win": {
-    "target": [
-      "portable"
+  "build": {
+    "appId": "com.postdelik.streamchathub",
+    "productName": "Stream Chat Hub",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-main/**/*",
+      "package.json",
+      "build/**/*"
     ],
-    "artifactName": "${productName}.${ext}",
-    "icon": "build/icon.ico",
-    "signAndEditExecutable": false
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "artifactName": "${productName}.${ext}",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
+    }
   }
-}
 }
