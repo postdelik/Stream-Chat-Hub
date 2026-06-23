@@ -140,7 +140,10 @@ let mockRunning = false;
 const appSockets = new Set<any>();
 const overlaySockets = new Set<any>();
 
-const twitchChatClient = new TwitchChatClient((message) => pushMessage(message));
+const twitchChatClient = new TwitchChatClient(
+  (message) => pushMessage(message),
+  TWITCH_CLIENT_ID
+);
 const youtubeChatClient = new YouTubeChatClient((message) => pushMessage(message));
 
 function createMessageId() {

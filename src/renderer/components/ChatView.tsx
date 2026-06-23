@@ -145,7 +145,8 @@ function getAppMessageStyle(overlay: OverlaySettings) {
     return undefined;
   }
 
-  const opacity = Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
+  const opacity =
+    Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
 
   if (overlay.styleMode === "color" || overlay.styleMode === "messageBubble") {
     return {
@@ -165,7 +166,8 @@ function getAppChatStyle(overlay: OverlaySettings) {
     return undefined;
   }
 
-  const opacity = Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
+  const opacity =
+    Math.max(0, Math.min(100, overlay.backgroundOpacity)) / 100;
 
   if (overlay.styleMode === "containerBubble") {
     return {
@@ -245,11 +247,23 @@ export function ChatView({
     overlaySettings.showStyleInApp &&
     overlaySettings.styleMode === "messageBubble";
 
+  const messagesClassName = [
+    "messages",
+    chatOnlyMode ? "chatOnlyMessages" : "",
+    overlaySettings.showStyleInApp &&
+    overlaySettings.styleMode === "containerBubble"
+      ? "appStyledChat"
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <section className="chat">
+    <section className={chatOnlyMode ? "chat chatOnlyView" : "chat"}>
       <header className="chatHeader">
-        <div>
+        <div className="chatHeaderInfo">
           <h2>{t("chatTitle")}</h2>
+
           <span>
             {messages.length} {t("messages")}
           </span>
@@ -275,7 +289,10 @@ export function ChatView({
             }
           >
             <EyeIcon />
-            <strong>{formatViewerCount(twitchViewersStatus.totalViewers)}</strong>
+
+            <strong>
+              {formatViewerCount(twitchViewersStatus.totalViewers)}
+            </strong>
           </div>
 
           <button
@@ -297,26 +314,23 @@ export function ChatView({
       </header>
 
       <div
-        className={
-          overlaySettings.showStyleInApp &&
-          overlaySettings.styleMode === "containerBubble"
-            ? "messages appStyledChat"
-            : "messages"
-        }
+        className={messagesClassName}
         style={getAppChatStyle(overlaySettings)}
       >
         {showContainerMedia && renderAppBubbleMedia(overlaySettings)}
 
         {messages.map((message) => (
           <article
-  className={
-    overlaySettings.showStyleInApp
-      ? "message appStyledMessage"
-      : "message"
-  }
-  key={message.id}
-  style={getAppMessageStyle(overlaySettings)}
->
+            className={[
+              "message",
+              chatOnlyMode ? "chatOnlyMessage" : "",
+              overlaySettings.showStyleInApp ? "appStyledMessage" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            key={message.id}
+            style={getAppMessageStyle(overlaySettings)}
+          >
             {showMessageMedia && renderAppBubbleMedia(overlaySettings)}
 
             <span
@@ -327,12 +341,23 @@ export function ChatView({
 
             <div className="appMessageContent">
               <div className="meta">
-                <strong>{message.authorName}</strong>
-                <span>#{message.channelName}</span>
-                <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+                <strong className="messageAuthor">
+                  {message.authorName}
+                </strong>
+
+                <span className="messageChannel">
+                  #{message.channelName}
+                </span>
+
+                <time
+                  className="messageTime"
+                  dateTime={new Date(message.timestamp).toISOString()}
+                >
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </time>
               </div>
 
-              <p>
+              <p className="messageText">
                 {renderTextWithHighlightsAndEmotes(
                   message.text,
                   message.emotes,

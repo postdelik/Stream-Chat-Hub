@@ -86,6 +86,8 @@ export type ChatMessage = {
   text: string;
   timestamp: number;
   emotes?: ChatMessageEmote[];
+  isSharedChat?: boolean;
+  sourceChannelId?: string;
 };
 
 export type ChatSource = {

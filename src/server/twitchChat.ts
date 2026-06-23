@@ -13,12 +13,20 @@ type TwitchUserState = {
   badges?: Record<string, string>;
   id?: string;
   emotes?: Record<string, string[]> | null;
+  "room-id"?: string;
+  "source-room-id"?: string;
 };
 
 type TwitchClientLike = {
   connect: () => Promise<[string, number]>;
   disconnect: () => Promise<[string, number]>;
   on: (eventName: string, callback: (...args: any[]) => void) => void;
+};
+
+type TwitchHelixUser = {
+  id: string;
+  login: string;
+  display_name: string;
 };
 
 function createMessageId() {
@@ -49,6 +57,10 @@ function normalizeOAuthToken(token: string) {
   }
 
   return `oauth:${trimmedToken}`;
+}
+
+function getBearerToken(token: string | null | undefined) {
+  return (token || "").trim().replace(/^oauth:/i, "");
 }
 
 function getTwitchEmoteUrl(emoteId: string) {
@@ -96,6 +108,12 @@ function parseTwitchEmotes(
 export class TwitchChatClient {
   private client: TwitchClientLike | null = null;
 
+  private readonly roomNameCache = new Map<string, string>();
+
+  private readonly roomNameRequests = new Map<string, Promise<string | null>>();
+
+  private currentAuth: TwitchAuthState | null = null;
+
   private status: TwitchConnectionStatus = {
     connected: false,
     channelNames: [],
@@ -104,14 +122,87 @@ export class TwitchChatClient {
     username: null,
   };
 
-  constructor(private readonly onMessage: (message: ChatMessage) => void) {}
+  constructor(
+    private readonly onMessage: (message: ChatMessage) => void,
+    private readonly twitchClientId: string
+  ) {}
 
   getStatus() {
     return this.status;
   }
 
+  private async resolveRoomName(roomId: string): Promise<string | null> {
+    const cachedName = this.roomNameCache.get(roomId);
+
+    if (cachedName) {
+      return cachedName;
+    }
+
+    const existingRequest = this.roomNameRequests.get(roomId);
+
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const accessToken = getBearerToken(this.currentAuth?.accessToken);
+
+    if (!accessToken || !this.twitchClientId) {
+      return null;
+    }
+
+    const request = (async () => {
+      try {
+        const response = await fetch(
+          `https://api.twitch.tv/helix/users?id=${encodeURIComponent(roomId)}`,
+          {
+            headers: {
+              "Client-Id": this.twitchClientId,
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.warn("[TWITCH SHARED CHAT] Helix request failed", {
+            roomId,
+            status: response.status,
+          });
+          return null;
+        }
+
+        const payload = (await response.json()) as {
+          data?: TwitchHelixUser[];
+        };
+
+        const user = payload.data?.[0];
+        const channelName = user?.login
+          ? normalizeChannelName(user.login)
+          : null;
+
+        if (channelName) {
+          this.roomNameCache.set(roomId, channelName);
+        }
+
+        return channelName;
+      } catch (error) {
+        console.warn("[TWITCH SHARED CHAT] Failed to resolve source room", {
+          roomId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+      } finally {
+        this.roomNameRequests.delete(roomId);
+      }
+    })();
+
+    this.roomNameRequests.set(roomId, request);
+    return request;
+  }
+
   async connect(channelNames: string[], auth?: TwitchAuthState | null) {
     await this.disconnect();
+
+    this.currentAuth = auth || null;
 
     const normalizedChannelNames = Array.from(
       new Set(
@@ -223,7 +314,7 @@ export class TwitchChatClient {
 
       client.on(
         "message",
-        (
+        async (
           channel: string,
           userstate: TwitchUserState,
           messageText: string,
@@ -233,7 +324,22 @@ export class TwitchChatClient {
             return;
           }
 
-          const channelName = normalizeChannelName(channel);
+          const receivingChannelName = normalizeChannelName(channel);
+          const roomId = userstate["room-id"] || "";
+          const sourceRoomId = userstate["source-room-id"] || "";
+          const isSharedChat = Boolean(
+            sourceRoomId && (!roomId || sourceRoomId !== roomId)
+          );
+
+          let channelName = receivingChannelName;
+
+          if (isSharedChat) {
+            const resolvedSourceChannelName = await this.resolveRoomName(
+              sourceRoomId
+            );
+
+            channelName = resolvedSourceChannelName || "Shared Chat";
+          }
 
           const authorName =
             userstate["display-name"] || userstate.username || "unknown";
@@ -241,7 +347,14 @@ export class TwitchChatClient {
           const emotes = parseTwitchEmotes(messageText, userstate);
 
           console.log(
-            `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`
+            `[TWITCH MESSAGE] #${channelName} ${authorName}: ${messageText}`,
+            isSharedChat
+              ? {
+                  receivingChannelName,
+                  roomId,
+                  sourceRoomId,
+                }
+              : undefined
           );
 
           this.onMessage({
@@ -252,6 +365,8 @@ export class TwitchChatClient {
             text: messageText,
             timestamp: Date.now(),
             emotes,
+            isSharedChat,
+            sourceChannelId: isSharedChat ? sourceRoomId : undefined,
           });
         }
       );
@@ -291,6 +406,7 @@ export class TwitchChatClient {
     const client = this.client;
 
     if (!client) {
+      this.currentAuth = null;
       this.status = {
         connected: false,
         channelNames: [],
@@ -310,6 +426,7 @@ export class TwitchChatClient {
     }
 
     this.client = null;
+    this.currentAuth = null;
 
     this.status = {
       connected: false,

@@ -40,12 +40,16 @@ async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 900,
-    minHeight: 620,
+
+    // Позволяет сильно сужать окно в режиме «Только чат».
+    minWidth: 360,
+    minHeight: 420,
+
     backgroundColor: "#080714",
     show: false,
     icon: getIconPath(),
     autoHideMenuBar: true,
+
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -87,7 +91,8 @@ async function createWindow() {
     }
 
     const isSamePage = url === currentUrl;
-    const isLocalDevPage = isDev && url.startsWith("http://localhost:5173");
+    const isLocalDevPage =
+      isDev && url.startsWith("http://localhost:5173");
     const isLocalAppPage = url.startsWith("file://");
 
     if (isSamePage || isLocalDevPage || isLocalAppPage) {
@@ -100,9 +105,10 @@ async function createWindow() {
 
   if (isDev) {
     await mainWindow.loadURL("http://localhost:5173");
-    mainWindow.webContents.openDevTools({ mode: "detach" });
   } else {
-    await mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
+    await mainWindow.loadFile(
+      path.join(app.getAppPath(), "dist", "index.html")
+    );
   }
 
   mainWindow.on("closed", () => {
@@ -127,6 +133,7 @@ app.whenReady().then(async () => {
     currentVersion: app.getVersion(),
     appPath: process.execPath,
     isPackaged: app.isPackaged,
+
     quitApp: () => {
       logger.app("Quit app requested");
       app.quit();
