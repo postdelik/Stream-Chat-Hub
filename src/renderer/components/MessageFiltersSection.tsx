@@ -1,4 +1,8 @@
-import { CollapsibleSection } from "./common/CollapsibleSection";
+import type { TwitchEmoteSettings } from "../../shared/types";
+import {
+  CollapsibleSection,
+  MiniCollapsibleSection,
+} from "./common/CollapsibleSection";
 
 type MessageFiltersSectionProps = {
   t: (key: string) => string;
@@ -10,6 +14,12 @@ type MessageFiltersSectionProps = {
   setFilterHideLinks: (value: boolean) => void;
   setFilterOnlyWords: (value: string) => void;
   setFilterHighlightWords: (value: string) => void;
+
+  twitchEmotes: TwitchEmoteSettings;
+  setTwitchEmoteProviderEnabled: (
+    provider: keyof TwitchEmoteSettings,
+    enabled: boolean
+  ) => void;
 };
 
 export function MessageFiltersSection({
@@ -22,6 +32,8 @@ export function MessageFiltersSection({
   setFilterHideLinks,
   setFilterOnlyWords,
   setFilterHighlightWords,
+  twitchEmotes,
+  setTwitchEmoteProviderEnabled,
 }: MessageFiltersSectionProps) {
   return (
     <CollapsibleSection title={t("messageFilters")}>
@@ -66,6 +78,60 @@ export function MessageFiltersSection({
       </label>
 
       <p className="hint">{t("commaSeparatedWordsHint")}</p>
+
+      <MiniCollapsibleSection title={t("thirdPartyEmotesTitle")} defaultOpen>
+        <div className="tabIntro">
+          <strong>{t("thirdPartyEmotesTitle")}</strong>
+          <small>{t("thirdPartyEmotesHint")}</small>
+        </div>
+
+        <div className="fieldGroup">
+          <label className="switchField">
+            <span>{t("sevenTvEmotes")}</span>
+            <input
+              type="checkbox"
+              checked={twitchEmotes.sevenTvEnabled}
+              onChange={(event) =>
+                setTwitchEmoteProviderEnabled(
+                  "sevenTvEnabled",
+                  event.target.checked
+                )
+              }
+            />
+            <span className="switchSlider" />
+          </label>
+
+          <label className="switchField">
+            <span>{t("betterTtvEmotes")}</span>
+            <input
+              type="checkbox"
+              checked={twitchEmotes.betterTtvEnabled}
+              onChange={(event) =>
+                setTwitchEmoteProviderEnabled(
+                  "betterTtvEnabled",
+                  event.target.checked
+                )
+              }
+            />
+            <span className="switchSlider" />
+          </label>
+
+          <label className="switchField">
+            <span>{t("frankerFaceZEmotes")}</span>
+            <input
+              type="checkbox"
+              checked={twitchEmotes.frankerFaceZEnabled}
+              onChange={(event) =>
+                setTwitchEmoteProviderEnabled(
+                  "frankerFaceZEnabled",
+                  event.target.checked
+                )
+              }
+            />
+            <span className="switchSlider" />
+          </label>
+        </div>
+      </MiniCollapsibleSection>
     </CollapsibleSection>
   );
 }

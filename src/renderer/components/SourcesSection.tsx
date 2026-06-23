@@ -220,10 +220,7 @@ export function SourcesSection({
           <MiniCollapsibleSection title={t("twitchAccountWork")} defaultOpen>
             <div className="tabIntro">
               <strong>{t("twitchAccountWork")}</strong>
-              <small>
-                После входа приложение автоматически добавит канал твоего Twitch
-                аккаунта и подключит чат.
-              </small>
+              <small>{t("twitchAccountWorkHint")}</small>
             </div>
 
             <div className="authCard">
@@ -255,9 +252,7 @@ export function SourcesSection({
               )}
             </div>
 
-            <p className="hint">
-              Для чтения чужого канала без входа используй вкладку “Без логина”.
-            </p>
+            <p className="hint">{t("reconnectAfterLogin")}</p>
           </MiniCollapsibleSection>
         </div>
       )}

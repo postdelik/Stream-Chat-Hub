@@ -10,6 +10,7 @@ import type {
   SafeTwitchAuthState,
   SafeYouTubeAuthState,
   TwitchConnectionStatus,
+  TwitchEmoteSettings,
   TwitchViewersStatus,
   UpdateCheckResult,
   UpdateInstallResult,
@@ -85,6 +86,12 @@ const defaultUpdateSettings: UpdateSettings = {
   skippedVersion: "",
 };
 
+const defaultTwitchEmoteSettings: TwitchEmoteSettings = {
+  sevenTvEnabled: true,
+  betterTtvEnabled: true,
+  frankerFaceZEnabled: true,
+};
+
 const fallbackFonts = [
   "Inter, Arial, sans-serif",
   "Arial, sans-serif",
@@ -95,7 +102,9 @@ const fallbackFonts = [
   "Times New Roman, serif",
   "Courier New, monospace",
 ];
+
 let initialChatConnectionStarted = false;
+
 export function App() {
   const [language, setLanguage] = useState<AppLanguage | null>(() =>
     getSavedLanguage()
@@ -182,6 +191,9 @@ export function App() {
 
   const [updateSettings, setUpdateSettings] =
     useState<UpdateSettings>(defaultUpdateSettings);
+  const [twitchEmotes, setTwitchEmotes] =
+    useState<TwitchEmoteSettings>(defaultTwitchEmoteSettings);
+
   const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult | null>(
     null
   );
@@ -270,8 +282,9 @@ export function App() {
       youtubeApiKey: "",
       overlay: overlaySettings,
       updates: updateSettings,
+      twitchEmotes,
     };
-  }, [sources, overlaySettings, updateSettings]);
+  }, [sources, overlaySettings, updateSettings, twitchEmotes]);
 
   async function reportClientError(payload: {
     type: string;
@@ -334,6 +347,11 @@ export function App() {
     setFilterHighlightWords(data.overlay.filters.highlightWords);
 
     setUpdateSettings(data.updates || defaultUpdateSettings);
+    setTwitchEmotes({
+      sevenTvEnabled: data.twitchEmotes?.sevenTvEnabled ?? true,
+      betterTtvEnabled: data.twitchEmotes?.betterTtvEnabled ?? true,
+      frankerFaceZEnabled: data.twitchEmotes?.frankerFaceZEnabled ?? true,
+    });
 
     return data;
   }
@@ -503,7 +521,10 @@ export function App() {
         window.clearInterval(timer);
 
         const settings = await loadSettingsFromServer();
-        await connectChatWithSources(settings.sources || []);
+        await connectChatWithSources(
+          settings.sources || [],
+          settings.twitchEmotes || defaultTwitchEmoteSettings
+        );
         await loadTwitchViewersStatus();
 
         setChatActionStatus(`${t("twitchLoginDone")}: ${auth.username}`);
@@ -731,7 +752,23 @@ export function App() {
     }
   }
 
-  async function connectChatWithSources(nextSources: ChatSource[]) {
+  async function setTwitchEmoteProviderEnabled(
+    provider: keyof TwitchEmoteSettings,
+    enabled: boolean
+  ) {
+    const nextSettings: TwitchEmoteSettings = {
+      ...twitchEmotes,
+      [provider]: enabled,
+    };
+
+    setTwitchEmotes(nextSettings);
+    await connectChatWithSources(sources, nextSettings);
+  }
+
+  async function connectChatWithSources(
+    nextSources: ChatSource[],
+    nextTwitchEmotes: TwitchEmoteSettings = twitchEmotes
+  ) {
     try {
       setChatActionStatus(t("connectingSources"));
 
@@ -743,6 +780,7 @@ export function App() {
         body: JSON.stringify({
           sources: nextSources,
           youtubeApiKey: "",
+          twitchEmotes: nextTwitchEmotes,
         }),
       });
 
@@ -847,39 +885,42 @@ export function App() {
   }, []);
 
   useEffect(() => {
-  async function loadInitialSettings() {
-    try {
-      const settings = await loadSettingsFromServer();
+    async function loadInitialSettings() {
+      try {
+        const settings = await loadSettingsFromServer();
 
-      setSettingsLoaded(true);
-      setSaveStatus(t("settingsLoaded"));
+        setSettingsLoaded(true);
+        setSaveStatus(t("settingsLoaded"));
 
-      const enabledSources = (settings.sources || []).filter(
-        (source) => source.enabled
-      );
+        const enabledSources = (settings.sources || []).filter(
+          (source) => source.enabled
+        );
 
-      if (
-  enabledSources.length > 0 &&
-  !initialChatConnectionStarted
-) {
-  initialChatConnectionStarted = true;
-  void connectChatWithSources(settings.sources || []);
-}
+        if (
+          enabledSources.length > 0 &&
+          !initialChatConnectionStarted
+        ) {
+          initialChatConnectionStarted = true;
+          void connectChatWithSources(
+            settings.sources || [],
+            settings.twitchEmotes || defaultTwitchEmoteSettings
+          );
+        }
 
-      if (settings.updates?.autoCheckEnabled) {
-        void checkUpdates(false, true);
+        if (settings.updates?.autoCheckEnabled) {
+          void checkUpdates(false, true);
+        }
+      } catch {
+        setSettingsLoaded(true);
+        setSaveStatus(t("settingsLoadFailed"));
       }
-    } catch {
-      setSettingsLoaded(true);
-      setSaveStatus(t("settingsLoadFailed"));
     }
-  }
 
-  loadInitialSettings();
-  loadTwitchAuthStatus();
-  loadYouTubeAuthStatus();
-  loadTwitchViewersStatus();
-}, []);
+    loadInitialSettings();
+    loadTwitchAuthStatus();
+    loadYouTubeAuthStatus();
+    loadTwitchViewersStatus();
+  }, []);
 
   useEffect(() => {
     async function loadMockStatus() {
@@ -1173,6 +1214,8 @@ export function App() {
           setFilterHideLinks={setFilterHideLinks}
           setFilterOnlyWords={setFilterOnlyWords}
           setFilterHighlightWords={setFilterHighlightWords}
+          twitchEmotes={twitchEmotes}
+          setTwitchEmoteProviderEnabled={setTwitchEmoteProviderEnabled}
         />
 
         <ObsLinkSection
