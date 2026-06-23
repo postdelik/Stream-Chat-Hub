@@ -3,6 +3,7 @@ import type {
   ChatMessageEmote,
   TwitchAuthState,
   TwitchConnectionStatus,
+  TwitchEmoteSettings,
 } from "../shared/types";
 
 const tmi = require("tmi.js");
@@ -33,6 +34,7 @@ type ThirdPartyEmoteDefinition = {
   id: string;
   name: string;
   url: string;
+  provider: "7tv" | "bttv" | "ffz";
 };
 
 type SevenTvHostFile = {
@@ -180,6 +182,7 @@ function parseTwitchEmotes(
         end,
         url: getTwitchEmoteUrl(emoteId),
         platform: "twitch",
+        provider: "twitch",
       });
     }
   }
@@ -220,6 +223,7 @@ function parseSevenTvEmotes(
       id: `7tv:${id}`,
       name,
       url: `${hostUrl}/${fileName}`,
+      provider: "7tv",
     });
   }
 
@@ -243,6 +247,7 @@ function parseBetterTtvEmotes(
       id: `bttv:${id}`,
       name,
       url: `https://cdn.betterttv.net/emote/${id}/2x`,
+      provider: "bttv",
     });
   }
 
@@ -278,6 +283,7 @@ function parseFrankerFaceZSets(
         id: `ffz:${id}`,
         name,
         url,
+        provider: "ffz",
       });
     }
   }
@@ -342,6 +348,7 @@ function parseThirdPartyEmotes(
       end,
       url: definition.url,
       platform: "thirdParty",
+      provider: definition.provider,
     });
   }
 
@@ -378,6 +385,12 @@ export class TwitchChatClient {
     | null = null;
 
   private currentAuth: TwitchAuthState | null = null;
+
+  private currentEmoteSettings: TwitchEmoteSettings = {
+    sevenTvEnabled: true,
+    betterTtvEnabled: true,
+    frankerFaceZEnabled: true,
+  };
 
   private status: TwitchConnectionStatus = {
     connected: false,
@@ -477,26 +490,44 @@ export class TwitchChatClient {
     }
 
     this.globalEmoteRequest = (async () => {
+      const sevenTvPromise = this.currentEmoteSettings.sevenTvEnabled
+        ? fetchJson<{ emotes?: SevenTvEmote[] }>(
+            "https://7tv.io/v3/emote-sets/global"
+          )
+        : Promise.resolve(null);
+
+      const betterTtvPromise = this.currentEmoteSettings.betterTtvEnabled
+        ? fetchJson<BetterTtvEmote[]>(
+            "https://api.betterttv.net/3/cached/emotes/global"
+          )
+        : Promise.resolve(null);
+
+      const ffzPromise = this.currentEmoteSettings.frankerFaceZEnabled
+        ? fetchJson<{
+            default_sets?: Array<string | number>;
+            sets?: Record<string, { emoticons?: FrankerFaceZEmote[] }>;
+          }>("https://api.frankerfacez.com/v1/set/global")
+        : Promise.resolve(null);
+
       const [sevenTvPayload, betterTtvPayload, ffzPayload] = await Promise.all([
-        fetchJson<{ emotes?: SevenTvEmote[] }>(
-          "https://7tv.io/v3/emote-sets/global"
-        ),
-        fetchJson<BetterTtvEmote[]>(
-          "https://api.betterttv.net/3/cached/emotes/global"
-        ),
-        fetchJson<{
-          default_sets?: Array<string | number>;
-          sets?: Record<string, { emoticons?: FrankerFaceZEmote[] }>;
-        }>("https://api.frankerfacez.com/v1/set/global"),
+        sevenTvPromise,
+        betterTtvPromise,
+        ffzPromise,
       ]);
 
       const emotes = mergeEmoteMaps(
-        parseFrankerFaceZSets(
-          ffzPayload?.sets,
-          ffzPayload?.default_sets
-        ),
-        parseBetterTtvEmotes(betterTtvPayload || []),
-        parseSevenTvEmotes(sevenTvPayload?.emotes)
+        this.currentEmoteSettings.frankerFaceZEnabled
+          ? parseFrankerFaceZSets(
+              ffzPayload?.sets,
+              ffzPayload?.default_sets
+            )
+          : new Map<string, ThirdPartyEmoteDefinition>(),
+        this.currentEmoteSettings.betterTtvEnabled
+          ? parseBetterTtvEmotes(betterTtvPayload || [])
+          : new Map<string, ThirdPartyEmoteDefinition>(),
+        this.currentEmoteSettings.sevenTvEnabled
+          ? parseSevenTvEmotes(sevenTvPayload?.emotes)
+          : new Map<string, ThirdPartyEmoteDefinition>()
       );
 
       this.globalEmoteCache = {
@@ -506,6 +537,7 @@ export class TwitchChatClient {
 
       console.log("[TWITCH EMOTES] Global third-party emotes loaded", {
         count: emotes.size,
+        enabled: this.currentEmoteSettings,
       });
 
       return emotes;
@@ -534,40 +566,58 @@ export class TwitchChatClient {
     }
 
     const request = (async () => {
+      const sevenTvPromise = this.currentEmoteSettings.sevenTvEnabled
+        ? fetchJson<{
+            emote_set?: {
+              emotes?: SevenTvEmote[];
+            };
+          }>(`https://7tv.io/v3/users/twitch/${encodeURIComponent(roomId)}`)
+        : Promise.resolve(null);
+
+      const betterTtvPromise = this.currentEmoteSettings.betterTtvEnabled
+        ? fetchJson<{
+            channelEmotes?: BetterTtvEmote[];
+            sharedEmotes?: BetterTtvEmote[];
+          }>(
+            `https://api.betterttv.net/3/cached/users/twitch/${encodeURIComponent(
+              roomId
+            )}`
+          )
+        : Promise.resolve(null);
+
+      const ffzPromise = this.currentEmoteSettings.frankerFaceZEnabled
+        ? fetchJson<{
+            room?: {
+              set?: string | number;
+            };
+            sets?: Record<string, { emoticons?: FrankerFaceZEmote[] }>;
+          }>(
+            `https://api.frankerfacez.com/v1/room/id/${encodeURIComponent(roomId)}`
+          )
+        : Promise.resolve(null);
+
       const [sevenTvPayload, betterTtvPayload, ffzPayload] = await Promise.all([
-        fetchJson<{
-          emote_set?: {
-            emotes?: SevenTvEmote[];
-          };
-        }>(`https://7tv.io/v3/users/twitch/${encodeURIComponent(roomId)}`),
-        fetchJson<{
-          channelEmotes?: BetterTtvEmote[];
-          sharedEmotes?: BetterTtvEmote[];
-        }>(
-          `https://api.betterttv.net/3/cached/users/twitch/${encodeURIComponent(
-            roomId
-          )}`
-        ),
-        fetchJson<{
-          room?: {
-            set?: string | number;
-          };
-          sets?: Record<string, { emoticons?: FrankerFaceZEmote[] }>;
-        }>(
-          `https://api.frankerfacez.com/v1/room/id/${encodeURIComponent(roomId)}`
-        ),
+        sevenTvPromise,
+        betterTtvPromise,
+        ffzPromise,
       ]);
 
       const emotes = mergeEmoteMaps(
-        parseFrankerFaceZSets(
-          ffzPayload?.sets,
-          ffzPayload?.room?.set != null ? [ffzPayload.room.set] : undefined
-        ),
-        parseBetterTtvEmotes([
-          ...(betterTtvPayload?.sharedEmotes || []),
-          ...(betterTtvPayload?.channelEmotes || []),
-        ]),
-        parseSevenTvEmotes(sevenTvPayload?.emote_set?.emotes)
+        this.currentEmoteSettings.frankerFaceZEnabled
+          ? parseFrankerFaceZSets(
+              ffzPayload?.sets,
+              ffzPayload?.room?.set != null ? [ffzPayload.room.set] : undefined
+            )
+          : new Map<string, ThirdPartyEmoteDefinition>(),
+        this.currentEmoteSettings.betterTtvEnabled
+          ? parseBetterTtvEmotes([
+              ...(betterTtvPayload?.sharedEmotes || []),
+              ...(betterTtvPayload?.channelEmotes || []),
+            ])
+          : new Map<string, ThirdPartyEmoteDefinition>(),
+        this.currentEmoteSettings.sevenTvEnabled
+          ? parseSevenTvEmotes(sevenTvPayload?.emote_set?.emotes)
+          : new Map<string, ThirdPartyEmoteDefinition>()
       );
 
       this.roomEmoteCache.set(roomId, {
@@ -578,6 +628,7 @@ export class TwitchChatClient {
       console.log("[TWITCH EMOTES] Channel third-party emotes loaded", {
         roomId,
         count: emotes.size,
+        enabled: this.currentEmoteSettings,
       });
 
       return emotes;
@@ -598,10 +649,24 @@ export class TwitchChatClient {
     return mergeEmoteMaps(globalEmotes, roomEmotes);
   }
 
-  async connect(channelNames: string[], auth?: TwitchAuthState | null) {
+  async connect(
+    channelNames: string[],
+    auth?: TwitchAuthState | null,
+    emoteSettings?: TwitchEmoteSettings
+  ) {
     await this.disconnect();
 
     this.currentAuth = auth || null;
+    this.currentEmoteSettings = {
+      sevenTvEnabled: emoteSettings?.sevenTvEnabled ?? true,
+      betterTtvEnabled: emoteSettings?.betterTtvEnabled ?? true,
+      frankerFaceZEnabled: emoteSettings?.frankerFaceZEnabled ?? true,
+    };
+
+    this.globalEmoteCache = null;
+    this.globalEmoteRequest = null;
+    this.roomEmoteCache.clear();
+    this.roomEmoteRequests.clear();
 
     const normalizedChannelNames = Array.from(
       new Set(

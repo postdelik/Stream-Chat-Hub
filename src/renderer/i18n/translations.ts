@@ -216,6 +216,12 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     diagnosticsLogsOpened: "Папка логов открыта",
     diagnosticsClearFailed: "Не удалось очистить логи",
     diagnosticsCleared: "Логи очищены",
+    thirdPartyEmotesTitle: "Сторонние эмоуты",
+    thirdPartyEmotesHint:
+    "Включай или отключай загрузку эмоутов отдельных сервисов. После изменения Twitch переподключится автоматически.",
+    sevenTvEmotes: "7TV",
+    betterTtvEmotes: "BetterTTV",
+    frankerFaceZEmotes: "FrankerFaceZ",
   },
 
   en: {
@@ -432,5 +438,11 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     diagnosticsLogsOpened: "Logs folder opened",
     diagnosticsClearFailed: "Failed to clear logs",
     diagnosticsCleared: "Logs cleared",
+    thirdPartyEmotesTitle: "Third-party emotes",
+    thirdPartyEmotesHint:
+    "Enable or disable emotes from individual services. Twitch reconnects automatically after a change.",
+    sevenTvEmotes: "7TV",
+    betterTtvEmotes: "BetterTTV",
+    frankerFaceZEmotes: "FrankerFaceZ",
   },
 };

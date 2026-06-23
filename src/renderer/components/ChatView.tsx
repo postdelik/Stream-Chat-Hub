@@ -19,16 +19,35 @@ type ChatViewProps = {
   overlaySettings: OverlaySettings;
 };
 
+
+function getEmoteProviderLabel(emote: ChatMessageEmote) {
+  switch (emote.provider) {
+    case "7tv":
+      return "7TV";
+    case "bttv":
+      return "BetterTTV";
+    case "ffz":
+      return "FrankerFaceZ";
+    case "youtube":
+      return "YouTube";
+    case "twitch":
+    default:
+      return "Twitch";
+  }
+}
+
 type EmoteImageProps = {
   emote: ChatMessageEmote;
 };
 
 function EmoteImage({ emote }: EmoteImageProps) {
   const [failed, setFailed] = useState(false);
+  const providerLabel = getEmoteProviderLabel(emote);
+  const title = `${emote.name} · ${providerLabel}`;
 
   if (failed) {
     return (
-      <span className="chatEmoteFallback" title="Эмоут не удалось загрузить">
+      <span className="chatEmoteFallback" title={title}>
         {emote.name}
       </span>
     );
@@ -39,7 +58,7 @@ function EmoteImage({ emote }: EmoteImageProps) {
       className="chatEmote"
       src={emote.url}
       alt={emote.name}
-      title={emote.name}
+      title={title}
       loading="lazy"
       onError={() => setFailed(true)}
     />

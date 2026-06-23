@@ -13,6 +13,19 @@ export type OverlayFilterSettings = {
   highlightWords: string;
 };
 
+export type TwitchEmoteSettings = {
+  sevenTvEnabled: boolean;
+  betterTtvEnabled: boolean;
+  frankerFaceZEnabled: boolean;
+};
+
+export type ChatMessageEmoteProvider =
+  | "twitch"
+  | "youtube"
+  | "7tv"
+  | "bttv"
+  | "ffz";
+
 export type ChatMessageEmote = {
   id: string;
   name: string;
@@ -20,6 +33,7 @@ export type ChatMessageEmote = {
   end: number;
   url: string;
   platform: "twitch" | "youtube" | "thirdParty";
+  provider?: ChatMessageEmoteProvider;
 };
 
 export type UpdateSettings = {
@@ -161,6 +175,7 @@ export type AppSettings = {
   youtubeApiKey: string;
   overlay: OverlaySettings;
   updates: UpdateSettings;
+  twitchEmotes: TwitchEmoteSettings;
   twitchAuth?: TwitchAuthState;
   youtubeAuth?: YouTubeAuthState;
 };

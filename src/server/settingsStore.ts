@@ -11,6 +11,7 @@ import type {
   OverlayPosition,
   OverlaySettings,
   OverlayStyleMode,
+  TwitchEmoteSettings,
   UpdateSettings,
 } from "../shared/types";
 
@@ -27,6 +28,12 @@ const DEFAULT_FILTER_SETTINGS: OverlayFilterSettings = {
 const DEFAULT_UPDATE_SETTINGS: UpdateSettings = {
   autoCheckEnabled: true,
   skippedVersion: "",
+};
+
+const DEFAULT_TWITCH_EMOTE_SETTINGS: TwitchEmoteSettings = {
+  sevenTvEnabled: true,
+  betterTtvEnabled: true,
+  frankerFaceZEnabled: true,
 };
 
 const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
@@ -60,6 +67,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   youtubeApiKey: "",
   overlay: DEFAULT_OVERLAY_SETTINGS,
   updates: DEFAULT_UPDATE_SETTINGS,
+  twitchEmotes: DEFAULT_TWITCH_EMOTE_SETTINGS,
 };
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -251,6 +259,27 @@ export function normalizeUpdateSettings(value: unknown): UpdateSettings {
   };
 }
 
+export function normalizeTwitchEmoteSettings(
+  value: unknown
+): TwitchEmoteSettings {
+  const data = value as Partial<TwitchEmoteSettings>;
+
+  return {
+    sevenTvEnabled: normalizeBoolean(
+      data.sevenTvEnabled,
+      DEFAULT_TWITCH_EMOTE_SETTINGS.sevenTvEnabled
+    ),
+    betterTtvEnabled: normalizeBoolean(
+      data.betterTtvEnabled,
+      DEFAULT_TWITCH_EMOTE_SETTINGS.betterTtvEnabled
+    ),
+    frankerFaceZEnabled: normalizeBoolean(
+      data.frankerFaceZEnabled,
+      DEFAULT_TWITCH_EMOTE_SETTINGS.frankerFaceZEnabled
+    ),
+  };
+}
+
 export function normalizeOverlaySettings(value: unknown): OverlaySettings {
   const data = value as Partial<OverlaySettings>;
 
@@ -350,6 +379,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     youtubeApiKey: normalizeString(data.youtubeApiKey),
     overlay: normalizeOverlaySettings(data.overlay),
     updates: normalizeUpdateSettings(data.updates),
+    twitchEmotes: normalizeTwitchEmoteSettings(data.twitchEmotes),
     twitchAuth: data.twitchAuth,
     youtubeAuth: data.youtubeAuth,
   };
