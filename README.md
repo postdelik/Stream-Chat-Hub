@@ -2,7 +2,7 @@
 
 [English](#english) | [Русский](#русский)
 
-# Stream Chat Hub
+**Current version: 0.5.0**
 
 **Stream Chat Hub** is a local desktop app for combining stream chat sources and showing a customizable chat overlay in OBS.
 
@@ -18,11 +18,14 @@ Stream Chat Hub is currently focused on Twitch and OBS overlay workflow.
 
 You can use it to read Twitch chat, display messages inside the app, show chat in OBS through a Browser Source, customize the overlay appearance, test the overlay without a live chat, check for updates, and create diagnostic archives for support.
 
+Version 0.5.0 adds the first complete third-party emotes system with support for 7TV, BetterTTV, and FrankerFaceZ.
+
 ### Features
 
 - Twitch chat reading without login
 - Twitch Login support
 - Multiple Twitch chat sources
+- Twitch Shared Chat source detection
 - Combined chat window inside the app
 - OBS Browser Source overlay
 - Custom overlay size, position, font and appearance
@@ -45,6 +48,13 @@ You can use it to read Twitch chat, display messages inside the app, show chat i
   - highlight selected words
 - Native Twitch emotes rendering in the app
 - Native Twitch emotes rendering in OBS overlay
+- Third-party emotes:
+  - 7TV
+  - BetterTTV
+  - FrankerFaceZ
+- Individual enable/disable switches for third-party emote services
+- Emote provider name shown on hover
+- Text fallback when an emote image cannot be loaded
 - Twitch viewer counter
 - Automatic update check on startup
 - Manual update check
@@ -81,6 +91,20 @@ Refresh browser when scene becomes active: optional
 ```
 
 The overlay is transparent by default and can be styled inside the app.
+
+### Third-party emotes
+
+Third-party emotes can be configured in the **Message Filters** section.
+
+Available services:
+
+- 7TV
+- BetterTTV
+- FrankerFaceZ
+
+Each service can be enabled or disabled independently. Twitch reconnects automatically when these settings are changed.
+
+Some emote image CDNs may be unavailable on certain networks. When an image cannot be loaded, Stream Chat Hub displays the emote name as text instead.
 
 ### Updates
 
@@ -149,7 +173,13 @@ Build the app:
 npm run build
 ```
 
-Create distributable files:
+Create the Windows portable build:
+
+```bash
+npm run dist:portable
+```
+
+Create Windows distributable files:
 
 ```bash
 npm run dist
@@ -169,12 +199,12 @@ src/
 
 Next major planned areas:
 
-- Diagnostics and logs improvements
-- Full Emotes System
 - Built-in onboarding / micro tutorial
 - Event Feed System
 - Stream Manager
 - Dock mode and popout windows
+- Diagnostics and updater improvements
+- Separate macOS build
 - Stable Twitch release
 
 See `ROADMAP.md` for the detailed plan.
@@ -189,15 +219,18 @@ YouTube support is planned for later and is not currently the main focus.
 
 ### Текущий статус
 
-Stream Chat Hub сейчас сфокусирован на Twitch и OBS overlay workflow.
+Stream Chat Hub сейчас сфокусирован на Twitch и работе с OBS overlay.
 
 Приложение можно использовать для чтения Twitch-чата, отображения сообщений внутри приложения, вывода чата в OBS через Browser Source, настройки внешнего вида overlay, тестирования overlay без живого чата, проверки обновлений и создания диагностических архивов для разбора ошибок.
+
+В версии 0.5.0 появилась первая полноценная система сторонних эмоутов с поддержкой 7TV, BetterTTV и FrankerFaceZ.
 
 ### Возможности
 
 - Чтение Twitch-чата без логина
 - Поддержка Twitch Login
 - Несколько Twitch-источников чата
+- Определение источника сообщений Twitch Shared Chat
 - Общий чат внутри приложения
 - OBS Browser Source overlay
 - Настройка размера, позиции, шрифта и внешнего вида overlay
@@ -220,6 +253,13 @@ Stream Chat Hub сейчас сфокусирован на Twitch и OBS overlay
   - подсвечивать выбранные слова
 - Отображение нативных Twitch emotes внутри приложения
 - Отображение нативных Twitch emotes в OBS overlay
+- Сторонние эмоуты:
+  - 7TV
+  - BetterTTV
+  - FrankerFaceZ
+- Отдельные переключатели для каждого сервиса эмоутов
+- Название сервиса эмоута при наведении
+- Текстовый fallback, если изображение эмоута не загрузилось
 - Счётчик зрителей Twitch
 - Автоматическая проверка обновлений при запуске
 - Ручная проверка обновлений
@@ -257,12 +297,26 @@ Refresh browser when scene becomes active: optional
 
 Overlay по умолчанию прозрачный. Внешний вид можно настроить внутри приложения.
 
+### Сторонние эмоуты
+
+Настройки сторонних эмоутов находятся в секции **«Фильтры сообщений»**.
+
+Поддерживаемые сервисы:
+
+- 7TV
+- BetterTTV
+- FrankerFaceZ
+
+Каждый сервис можно включить или выключить отдельно. После изменения настроек Twitch автоматически переподключается.
+
+На некоторых сетях CDN с изображениями эмоутов могут быть недоступны. Если изображение не удалось загрузить, Stream Chat Hub показывает название эмоута обычным текстом.
+
 ### Обновления
 
 Stream Chat Hub умеет проверять новые версии при запуске.
 
 Если доступна новая версия, приложение может показать окно с предложением обновиться.  
-Проверку обновлений можно выключить и снова включить в секции “Обновления”.
+Проверку обновлений можно выключить и снова включить в секции «Обновления».
 
 Для собранной Windows portable-версии updater может скачать новый executable, закрыть текущее приложение, заменить старый файл и запустить приложение заново.
 
@@ -324,7 +378,13 @@ npm run dev
 npm run build
 ```
 
-Создать файлы для распространения:
+Собрать portable-версию для Windows:
+
+```bash
+npm run dist:portable
+```
+
+Создать Windows-файлы для распространения:
 
 ```bash
 npm run dist
@@ -344,12 +404,12 @@ src/
 
 Следующие крупные направления:
 
-- Улучшение диагностики и логов
-- Полноценная Emotes System
 - Встроенное обучение / micro tutorial
 - Event Feed System
 - Stream Manager
 - Dock mode и отдельные окна
+- Улучшение диагностики и updater
+- Отдельная сборка для macOS
 - Стабильный Twitch-релиз
 
 Подробный план находится в `ROADMAP.md`.
