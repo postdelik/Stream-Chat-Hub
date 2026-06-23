@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 import type {
   ChatMessage,
   ChatMessageEmote,
@@ -18,6 +18,33 @@ type ChatViewProps = {
   filterHighlightWords: string;
   overlaySettings: OverlaySettings;
 };
+
+type EmoteImageProps = {
+  emote: ChatMessageEmote;
+};
+
+function EmoteImage({ emote }: EmoteImageProps) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span className="chatEmoteFallback" title="Эмоут не удалось загрузить">
+        {emote.name}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      className="chatEmote"
+      src={emote.url}
+      alt={emote.name}
+      title={emote.name}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 function formatViewerCount(value: number) {
   return new Intl.NumberFormat("ru-RU").format(value);
@@ -100,13 +127,9 @@ function renderTextWithHighlightsAndEmotes(
     }
 
     result.push(
-      <img
-        className="chatEmote"
+      <EmoteImage
         key={`emote-${emote.id}-${emote.start}-${index}`}
-        src={emote.url}
-        alt={emote.name}
-        title={emote.name}
-        loading="lazy"
+        emote={emote}
       />
     );
 

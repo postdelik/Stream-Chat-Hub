@@ -1342,4 +1342,9 @@ code {
     font-size: 13px;
     line-height: 1.4;
   }
+  .chatEmoteFallback {
+  display: inline;
+  color: inherit;
+  font: inherit;
+}
 }
