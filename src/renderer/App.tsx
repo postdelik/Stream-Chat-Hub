@@ -95,7 +95,7 @@ const fallbackFonts = [
   "Times New Roman, serif",
   "Courier New, monospace",
 ];
-
+let initialChatConnectionStarted = false;
 export function App() {
   const [language, setLanguage] = useState<AppLanguage | null>(() =>
     getSavedLanguage()
@@ -858,9 +858,13 @@ export function App() {
         (source) => source.enabled
       );
 
-      if (enabledSources.length > 0) {
-        void connectChatWithSources(settings.sources || []);
-      }
+      if (
+  enabledSources.length > 0 &&
+  !initialChatConnectionStarted
+) {
+  initialChatConnectionStarted = true;
+  void connectChatWithSources(settings.sources || []);
+}
 
       if (settings.updates?.autoCheckEnabled) {
         void checkUpdates(false, true);

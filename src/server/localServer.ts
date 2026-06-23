@@ -30,7 +30,7 @@ import {
   getDiagnosticsInfo,
 } from "./diagnostics";
 import { clearLogFiles, getLogsDir, logger } from "./logger";
-import { net, shell } from "electron";
+import { shell } from "electron";
 
 const PORT = 3877;
 
@@ -613,55 +613,11 @@ function getEnabledTwitchChannelNames(sources: ChatSource[]) {
     .filter(Boolean);
 }
 
-
-const allowedEmoteProxyHosts = new Set([
-  "cdn.betterttv.net",
-  "cdn.7tv.app",
-  "cdn.frankerfacez.com",
-  "static-cdn.jtvnw.net",
-]);
-
-function buildEmoteProxyUrl(url: string) {
-  try {
-    const parsedUrl = new URL(url);
-
-    if (
-      parsedUrl.protocol !== "https:" ||
-      !allowedEmoteProxyHosts.has(parsedUrl.hostname.toLowerCase())
-    ) {
-      return url;
-    }
-
-    return `http://127.0.0.1:${PORT}/emotes/proxy?url=${encodeURIComponent(url)}`;
-  } catch {
-    return url;
-  }
-}
-
-function prepareMessageForDelivery(message: ChatMessage): ChatMessage {
-  if (!message.emotes?.length) {
-    return message;
-  }
-
-  return {
-    ...message,
-    emotes: message.emotes.map((emote) => ({
-      ...emote,
-      url:
-        emote.platform === "thirdParty"
-          ? buildEmoteProxyUrl(emote.url)
-          : emote.url,
-    })),
-  };
-}
-
 function pushMessage(message: ChatMessage) {
-  const preparedMessage = prepareMessageForDelivery(message);
-
-  messages.push(preparedMessage);
+  messages.push(message);
   messages = messages.slice(-300);
 
-  const payload = JSON.stringify(preparedMessage);
+  const payload = JSON.stringify(message);
 
   for (const socket of appSockets) {
     try {
@@ -980,7 +936,7 @@ function renderTextWithEmotes(text, emotes) {
       escapeAttr(emote.name || "emote") +
       '" title="' +
       escapeAttr(emote.name || "emote") +
-      '" />';
+      '" onerror="this.replaceWith(document.createTextNode(this.alt))" />';
 
     cursor = emote.end + 1;
   }
@@ -1504,73 +1460,6 @@ export async function startLocalServer(options?: LocalServerOptions) {
     }
 
     return installPortableUpdate(downloadUrl);
-  });
-
-
-  server.get("/emotes/proxy", async (request, reply) => {
-    const query = request.query as { url?: string };
-    const rawUrl = String(query.url || "").trim();
-
-    if (!rawUrl) {
-      reply.code(400).send({ ok: false, error: "Не указан URL эмоутa" });
-      return;
-    }
-
-    let parsedUrl: URL;
-
-    try {
-      parsedUrl = new URL(rawUrl);
-    } catch {
-      reply.code(400).send({ ok: false, error: "Некорректный URL эмоутa" });
-      return;
-    }
-
-    const hostname = parsedUrl.hostname.toLowerCase();
-
-    if (
-      parsedUrl.protocol !== "https:" ||
-      !allowedEmoteProxyHosts.has(hostname)
-    ) {
-      reply.code(403).send({ ok: false, error: "Источник эмоутa запрещён" });
-      return;
-    }
-
-    try {
-      const response = await net.fetch(parsedUrl.toString(), {
-        headers: {
-          Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-          "User-Agent": "Stream-Chat-Hub",
-        },
-        bypassCustomProtocolHandlers: false,
-      });
-
-      if (!response.ok) {
-        reply.code(response.status).send({
-          ok: false,
-          error: `CDN вернул статус ${response.status}`,
-        });
-        return;
-      }
-
-      const contentType =
-        response.headers.get("content-type") || "application/octet-stream";
-      const buffer = Buffer.from(await response.arrayBuffer());
-
-      reply
-        .header("Cache-Control", "public, max-age=86400")
-        .type(contentType)
-        .send(buffer);
-    } catch (error) {
-      logger.error("Failed to proxy emote", {
-        url: parsedUrl.toString(),
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      reply.code(502).send({
-        ok: false,
-        error: "Не удалось загрузить эмоут",
-      });
-    }
   });
 
   server.get("/overlay-assets/:fileName", async (request, reply) => {
