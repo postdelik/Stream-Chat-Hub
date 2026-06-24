@@ -1,4 +1,97 @@
 # Release Notes
+# Stream Chat Hub v0.6.0
+
+Stream Chat Hub 0.6.0 is a major interface and usability update.
+
+## Highlights
+
+- New interactive guided onboarding
+- Unified OBS Overlay settings
+- Separate application appearance settings
+- Smarter chat scrolling
+- Authenticated Twitch/YouTube stream status in the combined chat header
+- Viewer counter hidden until Twitch Login
+- Improved responsive layout and many UI fixes
+
+## Guided onboarding
+
+The new onboarding tour explains:
+
+- chat sources
+- Twitch Login
+- OBS overlay presets
+- OBS Browser Source URL
+- test layout
+- message filters and third-party emotes
+- application appearance settings
+- combined chat
+- chat control buttons
+- updates
+- diagnostics
+
+Users upgrading from versions below 0.5.0 will be offered the tutorial once. The tutorial is never started automatically.
+
+## OBS and application appearance
+
+OBS overlay settings are now grouped into one section.
+
+Available presets:
+
+- Compact
+- Standard
+- Text Only
+- Custom
+
+The application chat can inherit OBS appearance settings or use its own font, spacing, background, opacity, border radius, and label visibility settings.
+
+## Chat behavior
+
+The chat no longer forces scrolling to the bottom while the user is reading older messages.
+
+When new messages arrive:
+
+- the current scroll position is preserved
+- a new message counter appears
+- a button allows jumping to the newest messages
+
+## Stream status
+
+After Twitch or YouTube Login, the platform name and current stream status appear next to the combined chat title.
+
+Status colors:
+
+- green: live
+- red: offline
+- yellow: checking
+- black: unavailable
+
+Anonymous sources do not show stream status indicators.
+
+The Twitch viewer counter is shown only when the authenticated Twitch channel is live.
+
+## Upgrade notes
+
+Existing settings are migrated automatically.
+
+The application now stores:
+
+- onboarding version
+- last launched application version
+- separate in-app chat appearance settings
+
+Authentication tokens are not exported or exposed.
+
+## Planned next step
+
+A future release will add profile export and import for:
+
+- OBS overlay settings
+- in-app appearance settings
+- filters and emote settings
+- uploaded bubble assets
+- selected font references
+
+Sensitive authentication data will not be included.
 
 ---
 
