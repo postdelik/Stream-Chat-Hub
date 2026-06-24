@@ -1,9 +1,10 @@
-import { useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type {
+  AppChatAppearanceSettings,
   ChatMessage,
   ChatMessageEmote,
   OverlaySettings,
-  TwitchViewersStatus,
+  OwnStreamStatus,
 } from "../../shared/types";
 import { getPlatformClassName, getPlatformIcon } from "../utils/chat";
 
@@ -14,9 +15,12 @@ type ChatViewProps = {
   clearMessages: () => void;
   chatOnlyMode: boolean;
   onToggleChatOnlyMode: () => void;
-  twitchViewersStatus: TwitchViewersStatus;
+  ownStreamStatuses: OwnStreamStatus[];
+  showViewerCounter: boolean;
+  viewerCount: number;
   filterHighlightWords: string;
   overlaySettings: OverlaySettings;
+  appAppearance: AppChatAppearanceSettings;
 };
 
 
@@ -63,6 +67,23 @@ function EmoteImage({ emote }: EmoteImageProps) {
       onError={() => setFailed(true)}
     />
   );
+}
+
+function getOwnStreamStatusLabel(
+  status: OwnStreamStatus,
+  t: (key: string) => string
+) {
+  switch (status.state) {
+    case "checking":
+      return t("streamStatusChecking");
+    case "live":
+      return t("streamStatusLive");
+    case "offline":
+      return t("streamStatusOffline");
+    case "error":
+    default:
+      return status.error || t("streamStatusError");
+  }
 }
 
 function formatViewerCount(value: number) {
@@ -204,8 +225,12 @@ function getAppMessageStyle(overlay: OverlaySettings) {
 }
 
 function getAppChatStyle(overlay: OverlaySettings) {
+  const baseStyle = {
+    gap: `${Math.max(0, Math.min(40, overlay.messageGap))}px`,
+  };
+
   if (!overlay.showStyleInApp) {
-    return undefined;
+    return baseStyle;
   }
 
   const opacity =
@@ -213,6 +238,7 @@ function getAppChatStyle(overlay: OverlaySettings) {
 
   if (overlay.styleMode === "containerBubble") {
     return {
+      ...baseStyle,
       background: hexToRgba(overlay.backgroundColor, opacity),
       borderRadius: `${overlay.borderRadius}px`,
       fontFamily: overlay.fontFamily,
@@ -220,6 +246,7 @@ function getAppChatStyle(overlay: OverlaySettings) {
   }
 
   return {
+    ...baseStyle,
     fontFamily: overlay.fontFamily,
   };
 }
@@ -247,6 +274,36 @@ function renderAppBubbleMedia(overlay: OverlaySettings) {
   }
 
   return <img className="appBubbleMedia" src={overlay.bubbleMediaUrl} alt="" />;
+}
+
+function getEffectiveAppOverlay(
+  overlay: OverlaySettings,
+  appAppearance: AppChatAppearanceSettings
+): OverlaySettings {
+  if (appAppearance.useOverlaySettings) {
+    return {
+      ...overlay,
+      showStyleInApp: true,
+      showPlatformIcon: true,
+    };
+  }
+
+  return {
+    ...overlay,
+    fontSize: appAppearance.fontSize,
+    fontFamily: appAppearance.fontFamily,
+    messageGap: appAppearance.messageGap,
+    backgroundOpacity: appAppearance.backgroundOpacity,
+    backgroundColor: appAppearance.backgroundColor,
+    borderRadius: appAppearance.borderRadius,
+    showPlatformIcon: appAppearance.showPlatformIcon,
+    showChannelName: appAppearance.showChannelName,
+    showAuthorName: appAppearance.showAuthorName,
+    styleMode: "color",
+    showStyleInApp: true,
+    bubbleMediaUrl: "",
+    bubbleMediaType: "none",
+  };
 }
 
 function EyeIcon() {
@@ -277,65 +334,130 @@ export function ChatView({
   clearMessages,
   chatOnlyMode,
   onToggleChatOnlyMode,
-  twitchViewersStatus,
+  ownStreamStatuses,
+  showViewerCounter,
+  viewerCount,
   filterHighlightWords,
   overlaySettings,
+  appAppearance,
 }: ChatViewProps) {
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const isNearBottomRef = useRef(true);
+  const previousMessageCountRef = useRef(messages.length);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+
+  const effectiveOverlay = getEffectiveAppOverlay(
+    overlaySettings,
+    appAppearance
+  );
+
   const showContainerMedia =
-    overlaySettings.showStyleInApp &&
-    overlaySettings.styleMode === "containerBubble";
+    appAppearance.useOverlaySettings &&
+    effectiveOverlay.styleMode === "containerBubble";
 
   const showMessageMedia =
-    overlaySettings.showStyleInApp &&
-    overlaySettings.styleMode === "messageBubble";
+    appAppearance.useOverlaySettings &&
+    effectiveOverlay.styleMode === "messageBubble";
 
   const messagesClassName = [
     "messages",
     chatOnlyMode ? "chatOnlyMessages" : "",
-    overlaySettings.showStyleInApp &&
-    overlaySettings.styleMode === "containerBubble"
+    appAppearance.useOverlaySettings &&
+    effectiveOverlay.styleMode === "containerBubble"
       ? "appStyledChat"
       : "",
   ]
     .filter(Boolean)
-    .join(" ");
+    .join("\n");
+
+  useEffect(() => {
+    const previousCount = previousMessageCountRef.current;
+    const addedMessages = Math.max(0, messages.length - previousCount);
+    previousMessageCountRef.current = messages.length;
+
+    if (isNearBottomRef.current) {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: previousCount === 0 ? "auto" : "smooth",
+        block: "end",
+      });
+      setNewMessagesCount(0);
+      return;
+    }
+
+    if (addedMessages > 0) {
+      setNewMessagesCount((current) => current + addedMessages);
+    }
+  }, [messages, messagesEndRef]);
+
+  function handleMessagesScroll() {
+    const element = messagesContainerRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const distanceFromBottom =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+
+    const nearBottom = distanceFromBottom <= 40;
+    isNearBottomRef.current = nearBottom;
+
+    if (nearBottom) {
+      setNewMessagesCount(0);
+    }
+  }
+
+  function scrollToNewestMessages() {
+    isNearBottomRef.current = true;
+    setNewMessagesCount(0);
+
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }
 
   return (
     <section className={chatOnlyMode ? "chat chatOnlyView" : "chat"}>
-      <header className="chatHeader">
+      <header className="chatHeader" data-tour-id="tour-chat">
         <div className="chatHeaderInfo">
-          <h2>{t("chatTitle")}</h2>
+          <div className="chatTitleRow">
+            <h2>{t("chatTitle")}</h2>
+
+            {ownStreamStatuses.length > 0 && (
+              <div className="ownStreamStatusList">
+                {ownStreamStatuses.map((status) => (
+                  <span
+                    className={`ownStreamStatus ${status.state}`}
+                    key={`${status.platform}-${status.channelName}`}
+                    title={getOwnStreamStatusLabel(status, t)}
+                  >
+                    <span className="ownStreamStatusDot" />
+                    <strong>
+                      {status.platform === "twitch" ? "Twitch" : "YouTube"}
+                    </strong>
+                    <span>{getOwnStreamStatusLabel(status, t)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           <span>
             {messages.length} {t("messages")}
           </span>
         </div>
 
-        <div className="chatHeaderButtons">
-          <div
-            className={
-              twitchViewersStatus.error
-                ? "viewerCounter viewerCounterError"
-                : "viewerCounter"
-            }
-            title={
-              twitchViewersStatus.error ||
-              twitchViewersStatus.channels
-                .map((channel) =>
-                  channel.live
-                    ? `#${channel.channelName}: ${channel.viewerCount}`
-                    : `#${channel.channelName}: offline`
-                )
-                .join("\n") ||
-              "Нет подключённых Twitch-каналов"
-            }
-          >
-            <EyeIcon />
-
-            <strong>
-              {formatViewerCount(twitchViewersStatus.totalViewers)}
-            </strong>
-          </div>
+        <div className="chatHeaderButtons" data-tour-id="tour-chat-buttons">
+          {showViewerCounter && (
+            <div
+              className="viewerCounter"
+              title={t("currentViewers")}
+            >
+              <EyeIcon />
+              <strong>{formatViewerCount(viewerCount)}</strong>
+            </div>
+          )}
 
           <button
             className="smallButton secondaryButton"
@@ -356,40 +478,52 @@ export function ChatView({
       </header>
 
       <div
+        ref={messagesContainerRef}
         className={messagesClassName}
-        style={getAppChatStyle(overlaySettings)}
+        style={getAppChatStyle(effectiveOverlay)}
+        onScroll={handleMessagesScroll}
       >
-        {showContainerMedia && renderAppBubbleMedia(overlaySettings)}
+        {showContainerMedia && renderAppBubbleMedia(effectiveOverlay)}
 
         {messages.map((message) => (
           <article
             className={[
               "message",
               chatOnlyMode ? "chatOnlyMessage" : "",
-              overlaySettings.showStyleInApp ? "appStyledMessage" : "",
+              "appStyledMessage",
+              !effectiveOverlay.showPlatformIcon ? "messageWithoutPlatform" : "",
             ]
               .filter(Boolean)
-              .join(" ")}
+              .join("\n")}
             key={message.id}
-            style={getAppMessageStyle(overlaySettings)}
+            style={getAppMessageStyle(effectiveOverlay)}
           >
-            {showMessageMedia && renderAppBubbleMedia(overlaySettings)}
+            {showMessageMedia && renderAppBubbleMedia(effectiveOverlay)}
 
-            <span
-              className={`platform ${getPlatformClassName(message.platform)}`}
-            >
-              {getPlatformIcon(message.platform)}
-            </span>
+            {effectiveOverlay.showPlatformIcon && (
+              <span
+                className={`platform ${getPlatformClassName(message.platform)}`}
+              >
+                {getPlatformIcon(message.platform)}
+              </span>
+            )}
 
             <div className="appMessageContent">
               <div className="meta">
-                <strong className="messageAuthor">
-                  {message.authorName}
-                </strong>
+                {effectiveOverlay.showAuthorName && (
+                  <strong
+                    className="messageAuthor"
+                    style={{ fontFamily: effectiveOverlay.fontFamily }}
+                  >
+                    {message.authorName}
+                  </strong>
+                )}
 
-                <span className="messageChannel">
-                  #{message.channelName}
-                </span>
+                {effectiveOverlay.showChannelName && (
+                  <span className="messageChannel">
+                    #{message.channelName}
+                  </span>
+                )}
 
                 <time
                   className="messageTime"
@@ -399,7 +533,13 @@ export function ChatView({
                 </time>
               </div>
 
-              <p className="messageText">
+              <p
+                className="messageText"
+                style={{
+                  fontFamily: effectiveOverlay.fontFamily,
+                  fontSize: `${effectiveOverlay.fontSize}px`,
+                }}
+              >
                 {renderTextWithHighlightsAndEmotes(
                   message.text,
                   message.emotes,
@@ -412,6 +552,16 @@ export function ChatView({
 
         <div ref={messagesEndRef} />
       </div>
+
+      {newMessagesCount > 0 && (
+        <button
+          className="newMessagesButton"
+          type="button"
+          onClick={scrollToNewestMessages}
+        >
+          ↓ {newMessagesCount} {t("newMessages")}
+        </button>
+      )}
     </section>
   );
 }

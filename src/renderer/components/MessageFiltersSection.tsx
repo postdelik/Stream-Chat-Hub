@@ -36,7 +36,7 @@ export function MessageFiltersSection({
   setTwitchEmoteProviderEnabled,
 }: MessageFiltersSectionProps) {
   return (
-    <CollapsibleSection title={t("messageFilters")}>
+    <CollapsibleSection title={t("messageFilters")} tourId="tour-message-filters">
       <div className="toggleGroup">
         <label className="toggleField">
           <input

@@ -2,7 +2,7 @@
 
 [English](#english) | [Русский](#русский)
 
-**Current version: 0.5.0**
+**Current version: 0.6.0**
 
 **Stream Chat Hub** is a local desktop app for combining stream chat sources and showing a customizable chat overlay in OBS.
 
@@ -18,10 +18,29 @@ Stream Chat Hub is currently focused on Twitch and OBS overlay workflow.
 
 You can use it to read Twitch chat, display messages inside the app, show chat in OBS through a Browser Source, customize the overlay appearance, test the overlay without a live chat, check for updates, and create diagnostic archives for support.
 
-Version 0.5.0 adds the first complete third-party emotes system with support for 7TV, BetterTTV, and FrankerFaceZ.
+Version 0.6.0 introduces the guided onboarding system, redesigned OBS overlay settings, separate in-app chat appearance settings, smarter chat scrolling, authenticated stream status, and a large set of interface improvements.
 
 ### Features
 
+- Interactive guided onboarding
+- One-time onboarding offer for users upgrading from versions below 0.5.0
+- Last launched version tracking for future migrations
+- Unified **OBS Overlay** settings section
+- Overlay presets:
+  - Compact
+  - Standard
+  - Text Only
+  - Custom
+- Automatic switch to Custom after manual preset changes
+- Separate **Application Settings** section
+- Option to inherit OBS overlay appearance inside the app
+- Independent in-app chat appearance settings
+- Smarter chat scrolling:
+  - automatic scroll only when the user is near the bottom
+  - unread message counter while reading older messages
+  - button to jump to the newest messages
+- Authenticated stream status in the combined chat header
+- Viewer counter hidden until Twitch Login and shown only for a live authenticated channel
 - Twitch chat reading without login
 - Twitch Login support
 - Multiple Twitch chat sources
@@ -199,7 +218,13 @@ src/
 
 Next major planned areas:
 
-- Built-in onboarding / micro tutorial
+- Settings profile export and import
+  - OBS overlay settings
+  - in-app appearance settings
+  - filters and emote settings
+  - uploaded bubble image/video assets
+  - selected font references
+  - safe export without auth tokens or secrets
 - Event Feed System
 - Stream Manager
 - Dock mode and popout windows
@@ -227,6 +252,25 @@ Stream Chat Hub сейчас сфокусирован на Twitch и работ�
 
 ### Возможности
 
+- Интерактивное пошаговое обучение
+- Одноразовое предложение обучения при обновлении с версии ниже 0.5.0
+- Сохранение последней запущенной версии для будущих миграций
+- Единый раздел **Overlay OBS**
+- Пресеты overlay:
+  - Компактный
+  - Стандартный
+  - Только текст
+  - Custom
+- Автоматический переход в Custom после ручного изменения настроек
+- Отдельный раздел **Настройки приложения**
+- Возможность наследовать оформление OBS overlay внутри приложения
+- Независимые настройки внешнего вида чата в приложении
+- Умная прокрутка чата:
+  - автопрокрутка только когда пользователь находится внизу
+  - счётчик новых сообщений при чтении старых
+  - кнопка перехода к новым сообщениям
+- Статус авторизованного стрима рядом с «Общий чат»
+- Счётчик зрителей скрыт до Twitch Login и показывается только для активного собственного эфира
 - Чтение Twitch-чата без логина
 - Поддержка Twitch Login
 - Несколько Twitch-источников чата

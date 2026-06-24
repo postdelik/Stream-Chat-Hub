@@ -5,6 +5,76 @@ type TranslationMap = Record<string, string>;
 export const translations: Record<AppLanguage, TranslationMap> = {
   ru: {
     appTitle: "Stream Chat Hub",
+    onboardingChoiceTitle: "Добро пожаловать в Stream Chat Hub",
+    onboardingChoiceText:
+      "Хочешь пройти короткое обучение по источникам чата, OBS overlay, настройкам приложения, обновлениям и диагностике?",
+    startOnboarding: "Пройти обучение",
+    declineOnboarding: "Отказаться",
+    startOnboardingAgain: "Пройти обучение ещё раз",
+    startOnboardingAgainHint:
+      "Обучение откроется с первого шага.",
+    startOnboardingButton: "Запустить",
+    tourCompletedTitle: "Обучение завершено",
+    tourCompletedText:
+      "Теперь ты знаешь, где находятся основные настройки Stream Chat Hub.",
+    tourCompletedPath:
+      "Чтобы пройти обучение ещё раз: открой раздел «О программе» и нажми кнопку «Запустить».",
+    gotIt: "Понятно",
+    onboardingStepWelcomeTitle: "Знакомство с приложением",
+    onboardingStepWelcomeText:
+      "Stream Chat Hub объединяет чаты поддерживаемых стриминговых платформ в одном приложении и выводит общий чат в OBS.",
+    onboardingStepTwitchTitle: "Подключение Twitch",
+    onboardingStepTwitchText:
+      "Добавь канал без логина или войди через Twitch, чтобы подключить чат своего аккаунта.",
+    onboardingStepObsTitle: "Добавление чата в OBS",
+    onboardingStepObsText:
+      "Создай Browser Source в OBS и вставь локальную ссылку overlay.",
+    onboardingStepReadyTitle: "Всё готово",
+    onboardingStepReadyText:
+      "Теперь можно настроить внешний вид, фильтры сообщений и сторонние эмоуты.",
+    back: "Назад",
+    next: "Далее",
+    finishOnboarding: "Завершить",
+    close: "Закрыть",
+    tourStepLabel: "Шаг",
+    tourStepOf: "из",
+    skipOnboarding: "Пропустить обучение",
+    tourStep1Title: "Все чаты в одном приложении",
+    tourStep1Text:
+      "Stream Chat Hub объединяет чаты поддерживаемых стриминговых платформ в одном окне. Здесь можно читать общий чат, настраивать его для приложения и выводить в OBS.",
+    tourStep2Title: "Источники чата",
+    tourStep2Text:
+      "В этом разделе добавляются каналы и аккаунты. Источники можно включать, выключать и удалять, а их сообщения собираются в общий чат.",
+    tourStep3Title: "Подключение Twitch",
+    tourStep3Text:
+      "Для публичного чтения канала используй вкладку «Без логина». Вход через Twitch подключает собственный аккаунт и открывает дополнительные возможности.",
+    tourStep4Title: "Overlay OBS",
+    tourStep4Text:
+      "Здесь находятся пресеты, размеры, позиция, шрифт и оформление OBS overlay. После ручного изменения активируется режим Custom.",
+    tourStep5Title: "Ссылка OBS и тестовый layout",
+    tourStep5Text:
+      "Скопируй локальную ссылку в Browser Source OBS. Тестовый layout позволяет проверить оформление без живого чата.",
+    tourStep6Title: "Фильтры и сторонние эмоуты",
+    tourStep6Text:
+      "Здесь можно скрывать команды и ссылки, фильтровать и подсвечивать слова, а также включать 7TV, BetterTTV и FrankerFaceZ.",
+    tourStep7Title: "Настройки приложения",
+    tourStep7Text:
+      "Чат внутри приложения может наследовать оформление OBS или использовать отдельные настройки шрифта, расстояния, фона и подписей.",
+    tourStep8Title: "Общий чат",
+    tourStep8Text:
+      "Здесь появляются сообщения из всех включённых источников. В заголовке видно общее количество сообщений, а новые сообщения добавляются в общий поток.",
+    tourStep9Title: "Кнопки управления чатом",
+    tourStep9Text:
+      "Кнопка «Очистить» удаляет сообщения из текущего окна. Кнопка «Только чат» скрывает панель настроек и оставляет чат на всё окно. Повторное нажатие возвращает настройки.",
+    tourStep10Title: "Обновления",
+    tourStep10Text:
+      "Автоматическую проверку обновлений можно включить или выключить. Здесь же доступна ручная проверка новой версии.",
+    tourStep11Title: "Диагностика и логи",
+    tourStep11Text:
+      "В этом разделе создаётся диагностический архив, показывается информация о системе и очищаются старые логи.",
+    tourStep12Title: "Как пройти обучение снова",
+    tourStep12Text:
+      "Открой раздел «О программе» и нажми кнопку запуска обучения. Тур всегда начнётся с первого шага.",
     chooseLanguageTitle: "Выберите язык",
 
     loadingSettings: "Загрузка настроек...",
@@ -73,6 +143,18 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     showSettings: "Настройки",
 
     obsOverlay: "OBS Overlay",
+    overlayObsTitle: "Overlay OBS",
+    customPreset: "Custom",
+    appAppearanceTitle: "Настройки приложения",
+    useOverlaySettingsInApp: "Взять настройки из Overlay OBS",
+    useOverlaySettingsInAppHint:
+      "Когда включено, чат внутри приложения использует шрифт, размеры и оформление OBS overlay.",
+    newMessages: "новых сообщений",
+    streamStatusChecking: "Проверяется",
+    streamStatusLive: "В эфире",
+    streamStatusOffline: "Офлайн",
+    streamStatusError: "Статус недоступен",
+    currentViewers: "Текущие зрители",
     quickPresetsHint:
       "Быстрые пресеты. После выбора можно вручную докрутить любые поля.",
     compact: "Компактный",
@@ -104,6 +186,26 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     backgroundColor: "Цвет фона",
     backgroundHex: "HEX цвет",
     messageFont: "Шрифт сообщений",
+    chooseSystemFont: "Выбрать шрифт",
+    systemFontPickerTitle: "Системные шрифты",
+    systemFontPickerHint:
+      "Выбери любой установленный в системе шрифт. При первом запросе Windows может попросить разрешение.",
+    loadSystemFonts: "Найти системные шрифты",
+    loadingSystemFonts: "Загрузка шрифтов...",
+    systemFontsLoaded: "Системные шрифты загружены",
+    systemFontsEmpty: "Установленные шрифты не найдены",
+    systemFontsNotSupported:
+      "Эта версия Chromium не поддерживает чтение локальных шрифтов. Доступны базовые варианты.",
+    systemFontsPermissionDenied:
+      "Доступ к системным шрифтам не разрешён. Можно использовать базовые варианты или повторить запрос.",
+    systemFontsLoadFailed: "Не удалось загрузить системные шрифты",
+    fontSearch: "Поиск",
+    fontSearchPlaceholder: "Введите название шрифта",
+    fontPreview: "Предпросмотр",
+    fontPreviewText: "Общий чат Stream Chat Hub",
+    fontsNotFound: "Шрифты по запросу не найдены",
+    selectFont: "Выбрать",
+    cancel: "Отмена",
 
     styleFileTitle: "Файл стиля",
     styleSizeHint:
@@ -184,7 +286,6 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     updateInstallStarted:
       "Обновление запущено. Приложение закроется и откроется заново.",
     updateInstallFailed: "Не удалось установить обновление",
-    close: "Закрыть",
 
     aboutTitle: "О проекте и контакты",
     aboutText: "Локальный инструмент для объединения чатов и вывода overlay в OBS.",
@@ -218,7 +319,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     diagnosticsCleared: "Логи очищены",
     thirdPartyEmotesTitle: "Сторонние эмоуты",
     thirdPartyEmotesHint:
-    "Включай или отключай загрузку эмоутов отдельных сервисов. После изменения Twitch переподключится автоматически.",
+      "Включай или отключай загрузку эмоутов отдельных сервисов. После изменения Twitch переподключится автоматически.",
     sevenTvEmotes: "7TV",
     betterTtvEmotes: "BetterTTV",
     frankerFaceZEmotes: "FrankerFaceZ",
@@ -226,6 +327,76 @@ export const translations: Record<AppLanguage, TranslationMap> = {
 
   en: {
     appTitle: "Stream Chat Hub",
+    onboardingChoiceTitle: "Welcome to Stream Chat Hub",
+    onboardingChoiceText:
+      "Would you like a short tutorial about chat sources, the OBS overlay, app settings, updates, and diagnostics?",
+    startOnboarding: "Start tutorial",
+    declineOnboarding: "Skip",
+    startOnboardingAgain: "Run the tutorial again",
+    startOnboardingAgainHint:
+      "The tutorial will restart from the first step.",
+    startOnboardingButton: "Start",
+    tourCompletedTitle: "Tutorial completed",
+    tourCompletedText:
+      "You now know where the main Stream Chat Hub settings are located.",
+    tourCompletedPath:
+      "To run the tutorial again, open the About section and click Start.",
+    gotIt: "Got it",
+    onboardingStepWelcomeTitle: "Meet the app",
+    onboardingStepWelcomeText:
+      "Stream Chat Hub combines chats from supported streaming platforms in one app and sends the combined chat to OBS.",
+    onboardingStepTwitchTitle: "Connect Twitch",
+    onboardingStepTwitchText:
+      "Add a channel without logging in, or sign in with Twitch to connect your own channel.",
+    onboardingStepObsTitle: "Add chat to OBS",
+    onboardingStepObsText:
+      "Create an OBS Browser Source and paste the local overlay URL.",
+    onboardingStepReadyTitle: "You are ready",
+    onboardingStepReadyText:
+      "You can now customize appearance, message filters, and third-party emotes.",
+    back: "Back",
+    next: "Next",
+    finishOnboarding: "Finish",
+    close: "Close",
+    tourStepLabel: "Step",
+    tourStepOf: "of",
+    skipOnboarding: "Skip tutorial",
+    tourStep1Title: "All chats in one application",
+    tourStep1Text:
+      "Stream Chat Hub combines chats from supported streaming platforms in one window. You can read the combined chat, customize the app view, and send it to OBS.",
+    tourStep2Title: "Chat sources",
+    tourStep2Text:
+      "Add channels and accounts here. Sources can be enabled, disabled, or removed, while their messages are collected into the combined chat.",
+    tourStep3Title: "Connect Twitch",
+    tourStep3Text:
+      "Use the anonymous tab to read a public channel. Twitch Login connects your own account and unlocks additional features.",
+    tourStep4Title: "OBS Overlay",
+    tourStep4Text:
+      "This section contains presets, dimensions, position, fonts, and OBS overlay styling. Manual changes switch the preset to Custom.",
+    tourStep5Title: "OBS URL and test layout",
+    tourStep5Text:
+      "Copy the local URL into an OBS Browser Source. The test layout lets you check the design without live chat messages.",
+    tourStep6Title: "Filters and third-party emotes",
+    tourStep6Text:
+      "Hide commands and links, filter or highlight words, and enable 7TV, BetterTTV, and FrankerFaceZ here.",
+    tourStep7Title: "Application settings",
+    tourStep7Text:
+      "The in-app chat can inherit OBS styling or use separate fonts, spacing, background, and label settings.",
+    tourStep8Title: "Combined chat",
+    tourStep8Text:
+      "Messages from all enabled sources appear here. The header shows the total message count, while new messages join the combined feed.",
+    tourStep9Title: "Chat controls",
+    tourStep9Text:
+      "Clear removes messages from the current window. Chat Only hides the settings panel and expands the chat. Press it again to restore the settings.",
+    tourStep10Title: "Updates",
+    tourStep10Text:
+      "Automatic update checks can be enabled or disabled. A manual update check is also available here.",
+    tourStep11Title: "Diagnostics and logs",
+    tourStep11Text:
+      "Create a diagnostics archive, view system details, and clear old logs from this section.",
+    tourStep12Title: "Run the tutorial again",
+    tourStep12Text:
+      "Open the About section and click the tutorial start button. The tour always restarts from the first step.",
     chooseLanguageTitle: "Choose language",
 
     loadingSettings: "Loading settings...",
@@ -294,6 +465,18 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     showSettings: "Settings",
 
     obsOverlay: "OBS Overlay",
+    overlayObsTitle: "OBS Overlay",
+    customPreset: "Custom",
+    appAppearanceTitle: "Application settings",
+    useOverlaySettingsInApp: "Use OBS Overlay settings",
+    useOverlaySettingsInAppHint:
+      "When enabled, the in-app chat uses the font, spacing, and appearance from the OBS overlay.",
+    newMessages: "new messages",
+    streamStatusChecking: "Checking",
+    streamStatusLive: "Live",
+    streamStatusOffline: "Offline",
+    streamStatusError: "Status unavailable",
+    currentViewers: "Current viewers",
     quickPresetsHint:
       "Quick presets. After choosing one, you can manually adjust any field.",
     compact: "Compact",
@@ -325,6 +508,26 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     backgroundColor: "Background color",
     backgroundHex: "HEX color",
     messageFont: "Message font",
+    chooseSystemFont: "Choose font",
+    systemFontPickerTitle: "System fonts",
+    systemFontPickerHint:
+      "Choose any font installed on your system. Windows may ask for permission on the first request.",
+    loadSystemFonts: "Find system fonts",
+    loadingSystemFonts: "Loading fonts...",
+    systemFontsLoaded: "System fonts loaded",
+    systemFontsEmpty: "No installed fonts were found",
+    systemFontsNotSupported:
+      "This Chromium version does not support local font access. Basic fonts are still available.",
+    systemFontsPermissionDenied:
+      "Access to system fonts was not granted. You can use the basic fonts or try again.",
+    systemFontsLoadFailed: "Could not load system fonts",
+    fontSearch: "Search",
+    fontSearchPlaceholder: "Enter a font name",
+    fontPreview: "Preview",
+    fontPreviewText: "Stream Chat Hub combined chat",
+    fontsNotFound: "No matching fonts found",
+    selectFont: "Select",
+    cancel: "Cancel",
 
     styleFileTitle: "Style file",
     styleSizeHint:
@@ -405,7 +608,6 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     updateInstallStarted:
       "Update started. The app will close and reopen automatically.",
     updateInstallFailed: "Failed to install update",
-    close: "Close",
 
     aboutTitle: "About and contacts",
     aboutText: "A local tool for combining chats and showing an OBS overlay.",
@@ -440,7 +642,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     diagnosticsCleared: "Logs cleared",
     thirdPartyEmotesTitle: "Third-party emotes",
     thirdPartyEmotesHint:
-    "Enable or disable emotes from individual services. Twitch reconnects automatically after a change.",
+      "Enable or disable emotes from individual services. Twitch reconnects automatically after a change.",
     sevenTvEmotes: "7TV",
     betterTtvEmotes: "BetterTTV",
     frankerFaceZEmotes: "FrankerFaceZ",

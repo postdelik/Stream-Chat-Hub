@@ -25,7 +25,7 @@ export function UpdatesSection({
     : t("updatesDisabledBadge");
 
   return (
-    <CollapsibleSection title={t("updatesTitle")} badge={badge}>
+    <CollapsibleSection title={t("updatesTitle")} badge={badge} tourId="tour-updates">
       <div className="updatesBox">
         <label className="switchField">
   <span>{t("autoCheckUpdates")}</span>

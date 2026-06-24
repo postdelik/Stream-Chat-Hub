@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
+  AppChatAppearanceSettings,
   AppSettings,
   ChatMessage,
   ChatSource,
+  OnboardingSettings,
   OverlayBubbleMediaType,
   OverlayPosition,
   OverlaySettings,
   OverlayStyleMode,
+  OwnStreamStatus,
   SafeTwitchAuthState,
   SafeYouTubeAuthState,
+  SourceStreamStatus,
+  StreamAvailabilityState,
   TwitchConnectionStatus,
   TwitchEmoteSettings,
   TwitchViewersStatus,
@@ -26,18 +31,19 @@ import {
 } from "./utils/chat";
 import { clampNumber } from "./utils/numbers";
 import { AboutSection } from "./components/AboutSection";
+import { AppAppearanceSection } from "./components/AppAppearanceSection";
 import { ChatView } from "./components/ChatView";
 import { DiagnosticsSection } from "./components/DiagnosticsSection";
+import { GuidedTour } from "./components/GuidedTour";
 import { MessageFiltersSection } from "./components/MessageFiltersSection";
-import { ObsLinkSection } from "./components/ObsLinkSection";
-import { OverlayAppearanceSection } from "./components/OverlayAppearanceSection";
-import { OverlaySettingsSection } from "./components/OverlaySettingsSection";
+import { OnboardingModal } from "./components/OnboardingModal";
+import {
+  OverlayObsSection,
+  type OverlayPreset,
+} from "./components/OverlayObsSection";
 import { SourcesSection, type AddSourceTab } from "./components/SourcesSection";
-import { TestOverlaySection } from "./components/TestOverlaySection";
 import { UpdatePromptModal } from "./components/UpdatePromptModal";
 import { UpdatesSection } from "./components/UpdatesSection";
-
-type OverlayPreset = "compact" | "standard" | "large" | "textOnly";
 
 function getSavedLanguage(): AppLanguage | null {
   const value = localStorage.getItem(languageStorageKey);
@@ -81,6 +87,126 @@ const defaultTwitchViewersStatus: TwitchViewersStatus = {
   error: null,
 };
 
+function normalizeChannelName(value: string) {
+  return value.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
+}
+
+function classifyYouTubeSourceState(
+  sourceStatus:
+    | YouTubeConnectionStatus["sources"][number]
+    | undefined,
+  globalError: string | null
+): StreamAvailabilityState {
+  if (sourceStatus?.connected) {
+    return "live";
+  }
+
+  const errorText = String(
+    sourceStatus?.error || globalError || ""
+  ).toLowerCase();
+
+  if (
+    errorText.includes("нет активного live-чата") ||
+    errorText.includes("no active live chat") ||
+    errorText.includes("нет активного live")
+  ) {
+    return "offline";
+  }
+
+  return "error";
+}
+
+function buildSourceStreamStatuses({
+  sources,
+  twitchViewersStatus,
+  youtubeStatus,
+  checking,
+}: {
+  sources: ChatSource[];
+  twitchViewersStatus: TwitchViewersStatus;
+  youtubeStatus: YouTubeConnectionStatus;
+  checking: boolean;
+}): SourceStreamStatus[] {
+  return sources
+    .filter((source) => source.enabled)
+    .map((source) => {
+      if (checking) {
+        return {
+          sourceId: source.id,
+          platform: source.platform,
+          channelName: source.channelName,
+          state: "checking" as const,
+          viewerCount: null,
+          error: null,
+        };
+      }
+
+      if (source.platform === "twitch") {
+        const normalizedName = normalizeChannelName(source.channelName);
+        const channel = twitchViewersStatus.channels.find(
+          (item) =>
+            normalizeChannelName(item.channelName) === normalizedName
+        );
+
+        if (!channel) {
+          return {
+            sourceId: source.id,
+            platform: source.platform,
+            channelName: source.channelName,
+            state: "error" as const,
+            viewerCount: null,
+            error:
+              twitchViewersStatus.error ||
+              "Не удалось получить статус Twitch",
+          };
+        }
+
+        if (channel.error) {
+          return {
+            sourceId: source.id,
+            platform: source.platform,
+            channelName: source.channelName,
+            state: "error" as const,
+            viewerCount: null,
+            error: channel.error,
+          };
+        }
+
+        return {
+          sourceId: source.id,
+          platform: source.platform,
+          channelName: source.channelName,
+          state: channel.live ? ("live" as const) : ("offline" as const),
+          viewerCount: channel.live ? channel.viewerCount : null,
+          error: null,
+        };
+      }
+
+      const sourceStatus = youtubeStatus.sources.find(
+        (item) => item.id === source.id
+      );
+
+      const state = classifyYouTubeSourceState(
+        sourceStatus,
+        youtubeStatus.error
+      );
+
+      return {
+        sourceId: source.id,
+        platform: source.platform,
+        channelName: source.channelName,
+        state,
+        viewerCount: null,
+        error:
+          state === "error"
+            ? sourceStatus?.error ||
+              youtubeStatus.error ||
+              "Не удалось получить статус YouTube"
+            : null,
+      };
+    });
+}
+
 const defaultUpdateSettings: UpdateSettings = {
   autoCheckEnabled: true,
   skippedVersion: "",
@@ -91,6 +217,96 @@ const defaultTwitchEmoteSettings: TwitchEmoteSettings = {
   betterTtvEnabled: true,
   frankerFaceZEnabled: true,
 };
+
+const CURRENT_ONBOARDING_VERSION = "0.5.0";
+const ONBOARDING_UPGRADE_THRESHOLD = "0.5.0";
+
+const defaultOnboardingSettings: OnboardingSettings = {
+  initialChoiceMade: false,
+  onboardingVersion: "",
+  lastLaunchedVersion: "",
+};
+
+function compareSemanticVersions(left: string, right: string) {
+  const parse = (value: string) =>
+    value
+      .replace(/^v/i, "")
+      .split(".")
+      .map((part) => Number.parseInt(part, 10) || 0);
+
+  const leftParts = parse(left);
+  const rightParts = parse(right);
+  const length = Math.max(leftParts.length, rightParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = leftParts[index] ?? 0;
+    const rightPart = rightParts[index] ?? 0;
+
+    if (leftPart > rightPart) {
+      return 1;
+    }
+
+    if (leftPart < rightPart) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+const defaultAppChatAppearance: AppChatAppearanceSettings = {
+  useOverlaySettings: true,
+  fontSize: 24,
+  fontFamily: "Inter, Arial, sans-serif",
+  messageGap: 8,
+  backgroundOpacity: 65,
+  backgroundColor: "#000000",
+  borderRadius: 12,
+  showPlatformIcon: true,
+  showChannelName: true,
+  showAuthorName: true,
+};
+
+function detectOverlayPreset(
+  overlay: OverlaySettings
+): OverlayPreset {
+  const compact =
+    overlay.width === 420 &&
+    overlay.height === 320 &&
+    overlay.fontSize === 18 &&
+    overlay.chatWidth === 360 &&
+    overlay.maxMessages === 6 &&
+    overlay.position === "left";
+
+  if (compact) {
+    return "compact";
+  }
+
+  const standard =
+    overlay.width === 800 &&
+    overlay.height === 600 &&
+    overlay.fontSize === 24 &&
+    overlay.chatWidth === 520 &&
+    overlay.maxMessages === 12 &&
+    overlay.position === "left";
+
+  if (standard) {
+    return "standard";
+  }
+
+  const textOnly =
+    overlay.width === 700 &&
+    overlay.height === 450 &&
+    overlay.fontSize === 28 &&
+    overlay.chatWidth === 620 &&
+    overlay.maxMessages === 8 &&
+    overlay.position === "left" &&
+    overlay.backgroundOpacity === 0 &&
+    overlay.showPlatformIcon === false &&
+    overlay.showChannelName === false;
+
+  return textOnly ? "textOnly" : "custom";
+}
 
 const fallbackFonts = [
   "Inter, Arial, sans-serif",
@@ -149,6 +365,7 @@ export function App() {
 
   const [twitchViewersStatus, setTwitchViewersStatus] =
     useState<TwitchViewersStatus>(defaultTwitchViewersStatus);
+  const [streamStatusChecking, setStreamStatusChecking] = useState(false);
 
   const [mockOverlayEnabled, setMockOverlayEnabled] = useState(false);
   const [chatActionStatus, setChatActionStatus] = useState("");
@@ -194,6 +411,17 @@ export function App() {
   const [twitchEmotes, setTwitchEmotes] =
     useState<TwitchEmoteSettings>(defaultTwitchEmoteSettings);
 
+  const [onboarding, setOnboarding] =
+    useState<OnboardingSettings>(defaultOnboardingSettings);
+
+  const [appChatAppearance, setAppChatAppearance] =
+    useState<AppChatAppearanceSettings>(defaultAppChatAppearance);
+
+  const [activeOverlayPreset, setActiveOverlayPreset] =
+    useState<OverlayPreset>("standard");
+  const [onboardingMode, setOnboardingMode] =
+    useState<"choice" | "tutorial" | null>(null);
+
   const [updateStatus, setUpdateStatus] = useState<UpdateCheckResult | null>(
     null
   );
@@ -219,6 +447,115 @@ export function App() {
   const connectedYoutubeSourcesCount = youtubeStatus.sources.filter(
     (source) => source.connected
   ).length;
+
+  const sourceStreamStatuses = useMemo(
+    () =>
+      buildSourceStreamStatuses({
+        sources,
+        twitchViewersStatus,
+        youtubeStatus,
+        checking: streamStatusChecking,
+      }),
+    [
+      sources,
+      twitchViewersStatus,
+      youtubeStatus,
+      streamStatusChecking,
+    ]
+  );
+
+  const ownStreamStatuses = useMemo<OwnStreamStatus[]>(() => {
+    const statuses: OwnStreamStatus[] = [];
+
+    if (
+      twitchAuthStatus.enabled &&
+      twitchAuthStatus.hasToken &&
+      twitchAuthStatus.username
+    ) {
+      const normalizedUsername = normalizeChannelName(
+        twitchAuthStatus.username
+      );
+      const channel = twitchViewersStatus.channels.find(
+        (item) =>
+          normalizeChannelName(item.channelName) === normalizedUsername
+      );
+
+      if (streamStatusChecking) {
+        statuses.push({
+          platform: "twitch",
+          channelName: twitchAuthStatus.username,
+          state: "checking",
+          viewerCount: null,
+          error: null,
+        });
+      } else if (!channel) {
+        statuses.push({
+          platform: "twitch",
+          channelName: twitchAuthStatus.username,
+          state: "error",
+          viewerCount: null,
+          error:
+            twitchViewersStatus.error ||
+            "Не удалось получить статус Twitch",
+        });
+      } else if (channel.error) {
+        statuses.push({
+          platform: "twitch",
+          channelName: twitchAuthStatus.username,
+          state: "error",
+          viewerCount: null,
+          error: channel.error,
+        });
+      } else {
+        statuses.push({
+          platform: "twitch",
+          channelName: twitchAuthStatus.username,
+          state: channel.live ? "live" : "offline",
+          viewerCount: channel.live ? channel.viewerCount : null,
+          error: null,
+        });
+      }
+    }
+
+    const enabledYouTubeSources = sources.filter(
+      (source) =>
+        source.enabled && source.platform === "youtube"
+    );
+
+    if (
+      youtubeAuthStatus.enabled &&
+      youtubeAuthStatus.hasAccessToken &&
+      enabledYouTubeSources.length === 1
+    ) {
+      const source = enabledYouTubeSources[0];
+      const sourceStatus = sourceStreamStatuses.find(
+        (item) => item.sourceId === source.id
+      );
+
+      if (sourceStatus) {
+        statuses.push({
+          platform: "youtube",
+          channelName: source.channelName,
+          state: sourceStatus.state,
+          viewerCount: null,
+          error: sourceStatus.error,
+        });
+      }
+    }
+
+    return statuses;
+  }, [
+    sources,
+    sourceStreamStatuses,
+    streamStatusChecking,
+    twitchAuthStatus,
+    twitchViewersStatus,
+    youtubeAuthStatus,
+  ]);
+
+  const ownTwitchStreamStatus = ownStreamStatuses.find(
+    (status) => status.platform === "twitch"
+  );
 
   const overlaySettings = useMemo<OverlaySettings>(() => {
     return {
@@ -283,8 +620,41 @@ export function App() {
       overlay: overlaySettings,
       updates: updateSettings,
       twitchEmotes,
+      onboarding,
+      appChatAppearance,
     };
-  }, [sources, overlaySettings, updateSettings, twitchEmotes]);
+  }, [
+    sources,
+    overlaySettings,
+    updateSettings,
+    twitchEmotes,
+    onboarding,
+    appChatAppearance,
+  ]);
+
+  function startOnboardingFromChoice() {
+    setOnboarding((current) => ({
+      ...current,
+      initialChoiceMade: true,
+      onboardingVersion: CURRENT_ONBOARDING_VERSION,
+    }));
+    setChatOnlyMode(false);
+    setOnboardingMode("tutorial");
+  }
+
+  function declineOnboarding() {
+    setOnboarding((current) => ({
+      ...current,
+      initialChoiceMade: true,
+      onboardingVersion: CURRENT_ONBOARDING_VERSION,
+    }));
+    setOnboardingMode(null);
+  }
+
+  function startOnboardingAgain() {
+    setChatOnlyMode(false);
+    setOnboardingMode("tutorial");
+  }
 
   async function reportClientError(payload: {
     type: string;
@@ -313,9 +683,26 @@ export function App() {
     }
   }
 
+  async function loadCurrentAppVersion() {
+    try {
+      const response = await fetch("http://localhost:3877/app/version");
+      const data = (await response.json()) as {
+        currentVersion?: string;
+      };
+
+      return data.currentVersion || "0.0.0";
+    } catch {
+      return "0.0.0";
+    }
+  }
+
   async function loadSettingsFromServer() {
-    const response = await fetch("http://localhost:3877/settings");
-    const data = (await response.json()) as AppSettings;
+    const [settingsResponse, currentVersion] = await Promise.all([
+      fetch("http://localhost:3877/settings"),
+      loadCurrentAppVersion(),
+    ]);
+
+    const data = (await settingsResponse.json()) as AppSettings;
 
     setSources(data.sources || []);
 
@@ -340,6 +727,44 @@ export function App() {
     setOverlayShowStyleInApp(Boolean(data.overlay.showStyleInApp));
     setOverlayBubbleMediaUrl(data.overlay.bubbleMediaUrl || "");
     setOverlayBubbleMediaType(data.overlay.bubbleMediaType || "none");
+    setActiveOverlayPreset(detectOverlayPreset(data.overlay));
+
+    setAppChatAppearance({
+      useOverlaySettings:
+        data.appChatAppearance?.useOverlaySettings ?? true,
+      fontSize:
+        data.appChatAppearance?.fontSize ?? data.overlay.fontSize ?? 24,
+      fontFamily:
+        data.appChatAppearance?.fontFamily ||
+        data.overlay.fontFamily ||
+        "Inter, Arial, sans-serif",
+      messageGap:
+        data.appChatAppearance?.messageGap ?? data.overlay.messageGap ?? 8,
+      backgroundOpacity:
+        data.appChatAppearance?.backgroundOpacity ??
+        data.overlay.backgroundOpacity ??
+        65,
+      backgroundColor:
+        data.appChatAppearance?.backgroundColor ||
+        data.overlay.backgroundColor ||
+        "#000000",
+      borderRadius:
+        data.appChatAppearance?.borderRadius ??
+        data.overlay.borderRadius ??
+        12,
+      showPlatformIcon:
+        data.appChatAppearance?.showPlatformIcon ??
+        data.overlay.showPlatformIcon ??
+        true,
+      showChannelName:
+        data.appChatAppearance?.showChannelName ??
+        data.overlay.showChannelName ??
+        true,
+      showAuthorName:
+        data.appChatAppearance?.showAuthorName ??
+        data.overlay.showAuthorName ??
+        true,
+    });
 
     setFilterHideCommands(data.overlay.filters.hideCommands);
     setFilterHideLinks(data.overlay.filters.hideLinks);
@@ -352,6 +777,47 @@ export function App() {
       betterTtvEnabled: data.twitchEmotes?.betterTtvEnabled ?? true,
       frankerFaceZEnabled: data.twitchEmotes?.frankerFaceZEnabled ?? true,
     });
+
+    const storedOnboarding = {
+      initialChoiceMade:
+        data.onboarding?.initialChoiceMade ?? false,
+      onboardingVersion:
+        data.onboarding?.onboardingVersion ?? "",
+      lastLaunchedVersion:
+        data.onboarding?.lastLaunchedVersion ?? "",
+    };
+
+    const upgradedFromOlderVersion =
+      Boolean(storedOnboarding.lastLaunchedVersion) &&
+      compareSemanticVersions(
+        storedOnboarding.lastLaunchedVersion,
+        ONBOARDING_UPGRADE_THRESHOLD
+      ) < 0 &&
+      compareSemanticVersions(
+        currentVersion,
+        ONBOARDING_UPGRADE_THRESHOLD
+      ) >= 0 &&
+      storedOnboarding.onboardingVersion !==
+        CURRENT_ONBOARDING_VERSION;
+
+    const shouldOfferOnboarding =
+      !storedOnboarding.initialChoiceMade ||
+      upgradedFromOlderVersion;
+
+    const nextOnboarding: OnboardingSettings = {
+      initialChoiceMade: shouldOfferOnboarding
+        ? false
+        : storedOnboarding.initialChoiceMade,
+      onboardingVersion:
+        storedOnboarding.onboardingVersion,
+      lastLaunchedVersion: currentVersion,
+    };
+
+    setOnboarding(nextOnboarding);
+
+    if (shouldOfferOnboarding) {
+      setOnboardingMode("choice");
+    }
 
     return data;
   }
@@ -379,14 +845,33 @@ export function App() {
   }
 
   async function loadTwitchViewersStatus() {
+    setStreamStatusChecking(true);
+
     try {
-      const response = await fetch("http://localhost:3877/twitch/viewers");
-      const data = (await response.json()) as TwitchViewersStatus;
-      setTwitchViewersStatus(data);
-      return data;
+      const [twitchResponse, youtubeResponse] = await Promise.all([
+        fetch("http://localhost:3877/twitch/viewers"),
+        fetch("http://localhost:3877/youtube/status"),
+      ]);
+
+      const twitchData =
+        (await twitchResponse.json()) as TwitchViewersStatus;
+      const youtubeData =
+        (await youtubeResponse.json()) as YouTubeConnectionStatus;
+
+      setTwitchViewersStatus(twitchData);
+      setYoutubeStatus(youtubeData);
+
+      return twitchData;
     } catch {
-      setTwitchViewersStatus(defaultTwitchViewersStatus);
+      setTwitchViewersStatus({
+        totalViewers: 0,
+        channels: [],
+        error: "Не удалось проверить статус стрима",
+      });
+
       return defaultTwitchViewersStatus;
+    } finally {
+      setStreamStatusChecking(false);
     }
   }
 
@@ -565,7 +1050,9 @@ export function App() {
     setChatActionStatus("YouTube временно скрыт");
   }
 
-  function applyOverlayPreset(preset: OverlayPreset) {
+  function applyOverlayPreset(
+    preset: Exclude<OverlayPreset, "custom">
+  ) {
     if (preset === "compact") {
       setOverlayWidth(420);
       setOverlayHeight(320);
@@ -581,6 +1068,7 @@ export function App() {
       setOverlayBorderRadius(10);
       setOverlayMessageGap(6);
       setOverlayStyleMode("messageBubble");
+      setActiveOverlayPreset("compact");
       setChatActionStatus(t("presetCompact"));
       return;
     }
@@ -600,26 +1088,8 @@ export function App() {
       setOverlayBorderRadius(12);
       setOverlayMessageGap(8);
       setOverlayStyleMode("messageBubble");
+      setActiveOverlayPreset("standard");
       setChatActionStatus(t("presetStandard"));
-      return;
-    }
-
-    if (preset === "large") {
-      setOverlayWidth(1200);
-      setOverlayHeight(700);
-      setOverlayFontSize(32);
-      setOverlayChatWidth(760);
-      setOverlayMaxMessages(10);
-      setOverlayPosition("left");
-      setOverlayShowPlatformIcon(true);
-      setOverlayShowAuthorName(true);
-      setOverlayShowChannelName(true);
-      setOverlayBackgroundOpacity(70);
-      setOverlayBackgroundColor("#000000");
-      setOverlayBorderRadius(16);
-      setOverlayMessageGap(10);
-      setOverlayStyleMode("messageBubble");
-      setChatActionStatus(t("presetLarge"));
       return;
     }
 
@@ -637,7 +1107,12 @@ export function App() {
     setOverlayBorderRadius(0);
     setOverlayMessageGap(6);
     setOverlayStyleMode("color");
+    setActiveOverlayPreset("textOnly");
     setChatActionStatus(t("presetTextOnly"));
+  }
+
+  function markOverlayCustom() {
+    setActiveOverlayPreset("custom");
   }
 
   function addAnonymousTwitchSource() {
@@ -1068,12 +1543,6 @@ export function App() {
     };
   }, []);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [messages]);
 
   if (!language) {
     return (
@@ -1111,6 +1580,19 @@ export function App() {
 
   return (
     <main className={chatOnlyMode ? "app chatOnlyMode" : "app"}>
+      <OnboardingModal
+        open={onboardingMode === "choice"}
+        t={t}
+        onStart={startOnboardingFromChoice}
+        onDecline={declineOnboarding}
+      />
+
+      <GuidedTour
+        open={onboardingMode === "tutorial"}
+        t={t}
+        onClose={() => setOnboardingMode(null)}
+      />
+
       <UpdatePromptModal
         t={t}
         updateStatus={showUpdatePrompt ? updateStatus : null}
@@ -1156,29 +1638,19 @@ export function App() {
           logoutYouTube={logoutYouTube}
         />
 
-        <OverlaySettingsSection
+        <OverlayObsSection
           t={t}
+          activePreset={activeOverlayPreset}
           overlayWidth={overlayWidth}
           overlayHeight={overlayHeight}
           overlayFontSize={overlayFontSize}
+          overlayFontFamily={overlayFontFamily}
           overlayChatWidth={overlayChatWidth}
           overlayMaxMessages={overlayMaxMessages}
           overlayPosition={overlayPosition}
-          setOverlayWidth={setOverlayWidth}
-          setOverlayHeight={setOverlayHeight}
-          setOverlayFontSize={setOverlayFontSize}
-          setOverlayChatWidth={setOverlayChatWidth}
-          setOverlayMaxMessages={setOverlayMaxMessages}
-          setOverlayPosition={setOverlayPosition}
-          applyOverlayPreset={applyOverlayPreset}
-        />
-
-        <OverlayAppearanceSection
-          t={t}
           overlayShowPlatformIcon={overlayShowPlatformIcon}
           overlayShowAuthorName={overlayShowAuthorName}
           overlayShowChannelName={overlayShowChannelName}
-          overlayShowStyleInApp={overlayShowStyleInApp}
           overlayBackgroundOpacity={overlayBackgroundOpacity}
           overlayBackgroundColor={overlayBackgroundColor}
           overlayBorderRadius={overlayBorderRadius}
@@ -1186,13 +1658,21 @@ export function App() {
           overlayStyleMode={overlayStyleMode}
           overlayBubbleMediaUrl={overlayBubbleMediaUrl}
           overlayBubbleMediaType={overlayBubbleMediaType}
-          overlayFontFamily={overlayFontFamily}
-          availableFonts={availableFonts}
           overlayAssetUploadStatus={overlayAssetUploadStatus}
+          availableFonts={availableFonts}
+          overlayUrl={overlayUrl}
+          copyStatus={copyStatus}
+          mockOverlayEnabled={mockOverlayEnabled}
+          setOverlayWidth={setOverlayWidth}
+          setOverlayHeight={setOverlayHeight}
+          setOverlayFontSize={setOverlayFontSize}
+          setOverlayFontFamily={setOverlayFontFamily}
+          setOverlayChatWidth={setOverlayChatWidth}
+          setOverlayMaxMessages={setOverlayMaxMessages}
+          setOverlayPosition={setOverlayPosition}
           setOverlayShowPlatformIcon={setOverlayShowPlatformIcon}
           setOverlayShowAuthorName={setOverlayShowAuthorName}
           setOverlayShowChannelName={setOverlayShowChannelName}
-          setOverlayShowStyleInApp={setOverlayShowStyleInApp}
           setOverlayBackgroundOpacity={setOverlayBackgroundOpacity}
           setOverlayBackgroundColor={setOverlayBackgroundColor}
           setOverlayBorderRadius={setOverlayBorderRadius}
@@ -1200,8 +1680,19 @@ export function App() {
           setOverlayStyleMode={setOverlayStyleMode}
           setOverlayBubbleMediaUrl={setOverlayBubbleMediaUrl}
           setOverlayBubbleMediaType={setOverlayBubbleMediaType}
-          setOverlayFontFamily={setOverlayFontFamily}
           setOverlayAssetUploadStatus={setOverlayAssetUploadStatus}
+          applyOverlayPreset={applyOverlayPreset}
+          markOverlayCustom={markOverlayCustom}
+          copyOverlayUrl={copyOverlayUrl}
+          setMockOverlayTestEnabled={setMockOverlayTestEnabled}
+        />
+
+        <AppAppearanceSection
+          t={t}
+          settings={appChatAppearance}
+          overlaySettings={overlaySettings}
+          availableFonts={availableFonts}
+          onChange={setAppChatAppearance}
         />
 
         <MessageFiltersSection
@@ -1216,19 +1707,6 @@ export function App() {
           setFilterHighlightWords={setFilterHighlightWords}
           twitchEmotes={twitchEmotes}
           setTwitchEmoteProviderEnabled={setTwitchEmoteProviderEnabled}
-        />
-
-        <ObsLinkSection
-          t={t}
-          overlayUrl={overlayUrl}
-          copyStatus={copyStatus}
-          copyOverlayUrl={copyOverlayUrl}
-        />
-
-        <TestOverlaySection
-          t={t}
-          mockOverlayEnabled={mockOverlayEnabled}
-          setMockOverlayTestEnabled={setMockOverlayTestEnabled}
         />
 
         <UpdatesSection
@@ -1247,6 +1725,7 @@ export function App() {
           language={language}
           t={t}
           chooseLanguage={chooseLanguage}
+          startOnboarding={startOnboardingAgain}
         />
       </aside>
 
@@ -1257,9 +1736,15 @@ export function App() {
         clearMessages={clearMessages}
         chatOnlyMode={chatOnlyMode}
         onToggleChatOnlyMode={() => setChatOnlyMode((current) => !current)}
-        twitchViewersStatus={twitchViewersStatus}
+        ownStreamStatuses={ownStreamStatuses}
+        showViewerCounter={
+          ownTwitchStreamStatus?.state === "live" &&
+          ownTwitchStreamStatus.viewerCount !== null
+        }
+        viewerCount={ownTwitchStreamStatus?.viewerCount ?? 0}
         filterHighlightWords={filterHighlightWords}
         overlaySettings={overlaySettings}
+        appAppearance={appChatAppearance}
       />
     </main>
   );

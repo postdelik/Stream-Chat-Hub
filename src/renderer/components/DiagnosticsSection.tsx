@@ -85,7 +85,7 @@ export function DiagnosticsSection({ t }: DiagnosticsSectionProps) {
     : 0;
 
 return (
-  <CollapsibleSection title={t("diagnosticsTitle")}>
+  <CollapsibleSection title={t("diagnosticsTitle")} tourId="tour-diagnostics">
       <div className="diagnosticsBox">
         <p className="hint">{t("diagnosticsHint")}</p>
 

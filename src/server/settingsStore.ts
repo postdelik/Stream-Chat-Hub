@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
 import type {
+  AppChatAppearanceSettings,
   AppSettings,
   ChatSource,
   OverlayBubbleMediaType,
@@ -11,6 +12,7 @@ import type {
   OverlayPosition,
   OverlaySettings,
   OverlayStyleMode,
+  OnboardingSettings,
   TwitchEmoteSettings,
   UpdateSettings,
 } from "../shared/types";
@@ -34,6 +36,25 @@ const DEFAULT_TWITCH_EMOTE_SETTINGS: TwitchEmoteSettings = {
   sevenTvEnabled: true,
   betterTtvEnabled: true,
   frankerFaceZEnabled: true,
+};
+
+const DEFAULT_ONBOARDING_SETTINGS: OnboardingSettings = {
+  initialChoiceMade: false,
+  onboardingVersion: "",
+  lastLaunchedVersion: "",
+};
+
+const DEFAULT_APP_CHAT_APPEARANCE: AppChatAppearanceSettings = {
+  useOverlaySettings: true,
+  fontSize: 24,
+  fontFamily: "Inter, Arial, sans-serif",
+  messageGap: 8,
+  backgroundOpacity: 65,
+  backgroundColor: "#000000",
+  borderRadius: 12,
+  showPlatformIcon: true,
+  showChannelName: true,
+  showAuthorName: true,
 };
 
 const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
@@ -68,6 +89,8 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   overlay: DEFAULT_OVERLAY_SETTINGS,
   updates: DEFAULT_UPDATE_SETTINGS,
   twitchEmotes: DEFAULT_TWITCH_EMOTE_SETTINGS,
+  onboarding: DEFAULT_ONBOARDING_SETTINGS,
+  appChatAppearance: DEFAULT_APP_CHAT_APPEARANCE,
 };
 
 function clampNumber(value: unknown, fallback: number, min: number, max: number) {
@@ -280,6 +303,85 @@ export function normalizeTwitchEmoteSettings(
   };
 }
 
+export function normalizeOnboardingSettings(
+  value: unknown
+): OnboardingSettings {
+  const data = value as Partial<OnboardingSettings>;
+
+  return {
+    initialChoiceMade: normalizeBoolean(
+      data.initialChoiceMade,
+      DEFAULT_ONBOARDING_SETTINGS.initialChoiceMade
+    ),
+    onboardingVersion: normalizeString(
+      data.onboardingVersion,
+      DEFAULT_ONBOARDING_SETTINGS.onboardingVersion
+    ),
+    lastLaunchedVersion: normalizeString(
+      data.lastLaunchedVersion,
+      DEFAULT_ONBOARDING_SETTINGS.lastLaunchedVersion
+    ),
+  };
+}
+
+
+export function normalizeAppChatAppearanceSettings(
+  value: unknown
+): AppChatAppearanceSettings {
+  const data = value as Partial<AppChatAppearanceSettings>;
+
+  return {
+    useOverlaySettings: normalizeBoolean(
+      data.useOverlaySettings,
+      DEFAULT_APP_CHAT_APPEARANCE.useOverlaySettings
+    ),
+    fontSize: clampNumber(
+      data.fontSize,
+      DEFAULT_APP_CHAT_APPEARANCE.fontSize,
+      10,
+      120
+    ),
+    fontFamily: normalizeString(
+      data.fontFamily,
+      DEFAULT_APP_CHAT_APPEARANCE.fontFamily
+    ),
+    messageGap: clampNumber(
+      data.messageGap,
+      DEFAULT_APP_CHAT_APPEARANCE.messageGap,
+      0,
+      40
+    ),
+    backgroundOpacity: clampNumber(
+      data.backgroundOpacity,
+      DEFAULT_APP_CHAT_APPEARANCE.backgroundOpacity,
+      0,
+      100
+    ),
+    backgroundColor: normalizeHexColor(
+      data.backgroundColor,
+      DEFAULT_APP_CHAT_APPEARANCE.backgroundColor
+    ),
+    borderRadius: clampNumber(
+      data.borderRadius,
+      DEFAULT_APP_CHAT_APPEARANCE.borderRadius,
+      0,
+      60
+    ),
+    showPlatformIcon: normalizeBoolean(
+      data.showPlatformIcon,
+      DEFAULT_APP_CHAT_APPEARANCE.showPlatformIcon
+    ),
+    showChannelName: normalizeBoolean(
+      data.showChannelName,
+      DEFAULT_APP_CHAT_APPEARANCE.showChannelName
+    ),
+    showAuthorName: normalizeBoolean(
+      data.showAuthorName,
+      DEFAULT_APP_CHAT_APPEARANCE.showAuthorName
+    ),
+  };
+}
+
 export function normalizeOverlaySettings(value: unknown): OverlaySettings {
   const data = value as Partial<OverlaySettings>;
 
@@ -380,6 +482,10 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     overlay: normalizeOverlaySettings(data.overlay),
     updates: normalizeUpdateSettings(data.updates),
     twitchEmotes: normalizeTwitchEmoteSettings(data.twitchEmotes),
+    onboarding: normalizeOnboardingSettings(data.onboarding),
+    appChatAppearance: normalizeAppChatAppearanceSettings(
+      data.appChatAppearance
+    ),
     twitchAuth: data.twitchAuth,
     youtubeAuth: data.youtubeAuth,
   };

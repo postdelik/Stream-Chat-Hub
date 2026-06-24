@@ -6,6 +6,7 @@ import Fastify from "fastify";
 import websocket from "@fastify/websocket";
 import multipart from "@fastify/multipart";
 import type {
+  AppChatAppearanceSettings,
   AppSettings,
   ChatMessage,
   ChatSource,
@@ -70,6 +71,19 @@ const defaultTwitchEmoteSettings: TwitchEmoteSettings = {
   frankerFaceZEnabled: true,
 };
 
+const defaultAppChatAppearance: AppChatAppearanceSettings = {
+  useOverlaySettings: true,
+  fontSize: 24,
+  fontFamily: "Inter, Arial, sans-serif",
+  messageGap: 8,
+  backgroundOpacity: 65,
+  backgroundColor: "#000000",
+  borderRadius: 12,
+  showPlatformIcon: true,
+  showChannelName: true,
+  showAuthorName: true,
+};
+
 const defaultOverlaySettings: OverlaySettings = {
   width: 800,
   height: 600,
@@ -123,6 +137,12 @@ const defaultSettings: AppSettings = {
   overlay: defaultOverlaySettings,
   updates: defaultUpdateSettings,
   twitchEmotes: defaultTwitchEmoteSettings,
+  onboarding: {
+    initialChoiceMade: false,
+    onboardingVersion: "",
+    lastLaunchedVersion: "",
+  },
+  appChatAppearance: defaultAppChatAppearance,
   twitchAuth: defaultTwitchAuth,
   youtubeAuth: defaultYouTubeAuth,
 };
@@ -565,6 +585,65 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
         typeof settings.twitchEmotes?.frankerFaceZEnabled === "boolean"
           ? settings.twitchEmotes.frankerFaceZEnabled
           : defaultTwitchEmoteSettings.frankerFaceZEnabled,
+    },
+    onboarding: {
+      initialChoiceMade:
+        typeof settings.onboarding?.initialChoiceMade === "boolean"
+          ? settings.onboarding.initialChoiceMade
+          : false,
+      onboardingVersion:
+        typeof settings.onboarding?.onboardingVersion === "string"
+          ? settings.onboarding.onboardingVersion
+          : "",
+      lastLaunchedVersion:
+        typeof settings.onboarding?.lastLaunchedVersion === "string"
+          ? settings.onboarding.lastLaunchedVersion
+          : "",
+    },
+    appChatAppearance: {
+      useOverlaySettings:
+        typeof settings.appChatAppearance?.useOverlaySettings === "boolean"
+          ? settings.appChatAppearance.useOverlaySettings
+          : defaultAppChatAppearance.useOverlaySettings,
+      fontSize:
+        typeof settings.appChatAppearance?.fontSize === "number"
+          ? Math.min(120, Math.max(10, settings.appChatAppearance.fontSize))
+          : defaultAppChatAppearance.fontSize,
+      fontFamily:
+        typeof settings.appChatAppearance?.fontFamily === "string"
+          ? settings.appChatAppearance.fontFamily
+          : defaultAppChatAppearance.fontFamily,
+      messageGap:
+        typeof settings.appChatAppearance?.messageGap === "number"
+          ? Math.min(40, Math.max(0, settings.appChatAppearance.messageGap))
+          : defaultAppChatAppearance.messageGap,
+      backgroundOpacity:
+        typeof settings.appChatAppearance?.backgroundOpacity === "number"
+          ? Math.min(
+              100,
+              Math.max(0, settings.appChatAppearance.backgroundOpacity)
+            )
+          : defaultAppChatAppearance.backgroundOpacity,
+      backgroundColor:
+        typeof settings.appChatAppearance?.backgroundColor === "string"
+          ? settings.appChatAppearance.backgroundColor
+          : defaultAppChatAppearance.backgroundColor,
+      borderRadius:
+        typeof settings.appChatAppearance?.borderRadius === "number"
+          ? Math.min(60, Math.max(0, settings.appChatAppearance.borderRadius))
+          : defaultAppChatAppearance.borderRadius,
+      showPlatformIcon:
+        typeof settings.appChatAppearance?.showPlatformIcon === "boolean"
+          ? settings.appChatAppearance.showPlatformIcon
+          : defaultAppChatAppearance.showPlatformIcon,
+      showChannelName:
+        typeof settings.appChatAppearance?.showChannelName === "boolean"
+          ? settings.appChatAppearance.showChannelName
+          : defaultAppChatAppearance.showChannelName,
+      showAuthorName:
+        typeof settings.appChatAppearance?.showAuthorName === "boolean"
+          ? settings.appChatAppearance.showAuthorName
+          : defaultAppChatAppearance.showAuthorName,
     },
     twitchAuth: {
       ...defaultTwitchAuth,
@@ -1662,6 +1741,10 @@ export async function startLocalServer(options?: LocalServerOptions) {
       });
     }
   });
+
+  server.get("/app/version", async () => ({
+    currentVersion: currentAppVersion,
+  }));
 
   server.get("/settings", async () => getSafeSettings(appSettings));
 

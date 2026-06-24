@@ -19,6 +19,25 @@ export type TwitchEmoteSettings = {
   frankerFaceZEnabled: boolean;
 };
 
+export type OnboardingSettings = {
+  initialChoiceMade: boolean;
+  onboardingVersion: string;
+  lastLaunchedVersion: string;
+};
+
+export type AppChatAppearanceSettings = {
+  useOverlaySettings: boolean;
+  fontSize: number;
+  fontFamily: string;
+  messageGap: number;
+  backgroundOpacity: number;
+  backgroundColor: string;
+  borderRadius: number;
+  showPlatformIcon: boolean;
+  showChannelName: boolean;
+  showAuthorName: boolean;
+};
+
 export type ChatMessageEmoteProvider =
   | "twitch"
   | "youtube"
@@ -111,6 +130,29 @@ export type ChatSource = {
   enabled: boolean;
 };
 
+export type StreamAvailabilityState =
+  | "checking"
+  | "live"
+  | "offline"
+  | "error";
+
+export type SourceStreamStatus = {
+  sourceId: string;
+  platform: Exclude<ChatPlatform, "mock">;
+  channelName: string;
+  state: StreamAvailabilityState;
+  viewerCount: number | null;
+  error: string | null;
+};
+
+export type OwnStreamStatus = {
+  platform: Exclude<ChatPlatform, "mock">;
+  channelName: string;
+  state: StreamAvailabilityState;
+  viewerCount: number | null;
+  error: string | null;
+};
+
 export type OverlaySettings = {
   width: number;
   height: number;
@@ -176,6 +218,8 @@ export type AppSettings = {
   overlay: OverlaySettings;
   updates: UpdateSettings;
   twitchEmotes: TwitchEmoteSettings;
+  onboarding: OnboardingSettings;
+  appChatAppearance: AppChatAppearanceSettings;
   twitchAuth?: TwitchAuthState;
   youtubeAuth?: YouTubeAuthState;
 };

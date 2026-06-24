@@ -8,11 +8,22 @@ function normalizeTwitchChannelName(channelName: string) {
   return channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
 }
 
-function getEnabledTwitchChannelNames(sources: ChatSource[]) {
-  return sources
+function getEnabledTwitchChannelNames(
+  sources: ChatSource[],
+  ownChannelName?: string | null
+) {
+  const names = sources
     .filter((source) => source.enabled && source.platform === "twitch")
     .map((source) => normalizeTwitchChannelName(source.channelName))
     .filter(Boolean);
+
+  const ownChannel = normalizeTwitchChannelName(ownChannelName || "");
+
+  if (ownChannel) {
+    names.push(ownChannel);
+  }
+
+  return [...new Set(names)];
 }
 
 export async function getTwitchViewersStatus({
@@ -24,7 +35,10 @@ export async function getTwitchViewersStatus({
   auth: TwitchAuthState;
   clientId: string;
 }): Promise<TwitchViewersStatus> {
-  const channelNames = getEnabledTwitchChannelNames(sources);
+  const channelNames = getEnabledTwitchChannelNames(
+    sources,
+    auth.username
+  );
 
   if (channelNames.length === 0) {
     return {

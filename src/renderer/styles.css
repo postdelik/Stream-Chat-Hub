@@ -1342,9 +1342,1114 @@ code {
     font-size: 13px;
     line-height: 1.4;
   }
-  .chatEmoteFallback {
+}
+
+
+.chatEmoteFallback {
   display: inline;
   color: inherit;
   font: inherit;
 }
+
+/* Onboarding */
+
+.onboardingModal {
+  width: min(560px, 100%);
+}
+
+.onboardingIcon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  box-shadow: 0 14px 34px rgba(124, 58, 237, 0.3);
+}
+
+.onboardingProgress {
+  display: flex;
+  gap: 8px;
+  padding-right: 48px;
+}
+
+.onboardingProgressDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.onboardingProgressDot.active {
+  width: 28px;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+}
+
+.onboardingCode {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #e2e8f0;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-wrap: anywhere;
+}
+
+/* Message spacing slider */
+
+.rangeField {
+  display: grid;
+  gap: 9px;
+}
+
+.rangeFieldHeader,
+.rangeFieldScale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rangeFieldHeader span {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rangeFieldHeader strong {
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(124, 58, 237, 0.25);
+  font-size: 12px;
+}
+
+.rangeFieldScale {
+  color: #8994bd;
+  font-size: 11px;
+}
+
+.themedRange {
+  width: 100%;
+  height: 6px;
+  margin: 4px 0;
+  appearance: none;
+  border-radius: 999px;
+  outline: none;
+  background:
+    linear-gradient(90deg, #7c3aed, #db2777);
+}
+
+.themedRange::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  appearance: none;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  background: #7c3aed;
+  box-shadow:
+    0 0 0 4px rgba(124, 58, 237, 0.2),
+    0 8px 20px rgba(0, 0, 0, 0.32);
+  cursor: grab;
+}
+
+.themedRange::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.06);
+}
+
+/* Font selector */
+
+.fontSelectorField {
+  display: grid;
+  gap: 7px;
+}
+
+.fontSelectorLabel {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fontSelectorButton {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 13px;
+  color: #ffffff;
+  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(219, 39, 119, 0.08)),
+    rgba(0, 0, 0, 0.24);
+}
+
+.fontSelectorButton:hover {
+  border-color: rgba(167, 139, 250, 0.52);
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(219, 39, 119, 0.13)),
+    rgba(0, 0, 0, 0.28);
+}
+
+.fontSelectorPreview {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fontSelectorButton strong {
+  color: #c4b5fd;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 12px;
+}
+
+/* Font picker modal */
+
+.fontPickerBackdrop {
+  z-index: 10020;
+}
+
+.fontPickerModal {
+  width: min(720px, calc(100vw - 32px));
+  max-width: 100%;
+  max-height: min(760px, calc(100vh - 32px));
+  grid-template-rows: auto auto auto auto minmax(160px, 1fr) auto;
+  overflow: hidden;
+}
+
+.fontPickerHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  min-width: 0;
+  padding-right: 42px;
+}
+
+.fontPickerHeading {
+  min-width: 0;
+}
+
+.fontPickerHeading h2,
+.fontPickerHeading p {
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.fontPickerHeading h2 {
+  margin: 0 0 8px;
+  line-height: 1.15;
+}
+
+.fontPickerHeading p {
+  margin: 0;
+}
+
+.fontPickerLoadButton {
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+.fontPickerHeader h2 {
+  margin-bottom: 6px;
+}
+
+.fontPreviewCard {
+  display: grid;
+  gap: 7px;
+  min-height: 92px;
+  padding: 16px;
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(219, 39, 119, 0.08)),
+    rgba(0, 0, 0, 0.22);
+}
+
+.fontPreviewCard small {
+  color: #aeb8dd;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.fontPreviewCard strong {
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.fontPickerStatus {
+  margin: 0;
+}
+
+.fontList {
+  min-height: 180px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.fontListItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 12px;
+  color: #e8ecff;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 16px;
+}
+
+.fontListItem:hover {
+  border-color: rgba(167, 139, 250, 0.32);
+  background: rgba(124, 58, 237, 0.13);
+}
+
+.fontListItem.selected {
+  border-color: rgba(216, 180, 254, 0.5);
+  background:
+    linear-gradient(135deg, rgba(124, 58, 237, 0.28), rgba(219, 39, 119, 0.2));
+}
+
+.fontListItem span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fontListItem strong {
+  color: #bbf7d0;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.fontPickerActions {
+  margin-top: 0;
+}
+
+@media (max-width: 620px) {
+  .fontPickerBackdrop {
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .fontPickerModal {
+    width: 100%;
+    max-height: calc(100vh - 16px);
+    padding: 16px;
+    border-radius: 18px;
+    gap: 12px;
+  }
+
+  .fontPickerHeader {
+    padding-right: 36px;
+  }
+
+  .fontPickerHeading h2 {
+    max-width: calc(100% - 4px);
+    font-size: 21px;
+  }
+
+  .fontPickerHeading p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .fontPickerModal .modalCloseButton {
+    top: 10px;
+    right: 10px;
+  }
+
+  .fontPreviewCard {
+    min-height: 78px;
+    padding: 13px;
+  }
+
+  .fontPreviewCard strong {
+    font-size: 18px;
+  }
+
+  .fontList {
+    min-height: 130px;
+  }
+
+  .fontPickerActions {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+/* Unified OBS overlay settings */
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.presetButton {
+  min-height: 40px;
+  padding: 9px 10px;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  font-weight: 800;
+}
+
+.presetButton:hover:not(:disabled) {
+  border-color: rgba(167, 139, 250, 0.38);
+  background: rgba(124, 58, 237, 0.13);
+}
+
+.presetButton.active,
+.presetButton.active:disabled {
+  color: #ffffff;
+  border-color: rgba(216, 180, 254, 0.45);
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.24);
+  opacity: 1;
+}
+
+.presetButton:disabled:not(.active) {
+  opacity: 0.5;
+}
+
+.overlayControlGroup {
+  margin-top: 4px;
+}
+
+.twoColumnFields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sectionDivider {
+  height: 1px;
+  margin: 16px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.obsLinkInline {
+  display: grid;
+  gap: 8px;
+}
+
+.obsLinkInline > span {
+  color: #dbeafe;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.obsLinkInline code {
+  margin: 0;
+}
+
+.testLayoutSwitch {
+  margin-top: 14px;
+}
+
+/* Application appearance */
+
+.appAppearanceCustomFields {
+  margin-top: 14px;
+}
+
+.inheritedSettingsSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.inheritedSettingsSummary span {
+  color: #a5b4fc;
+  font-size: 13px;
+}
+
+.inheritedSettingsSummary strong {
+  color: #ffffff;
+  font-size: 13px;
+  text-align: right;
+}
+
+/* Chat scroll lock and jump button */
+
+.chat {
+  position: relative;
+}
+
+.newMessagesButton {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  z-index: 20;
+  transform: translateX(-50%);
+  min-height: 38px;
+  padding: 8px 14px;
+  color: #ffffff;
+  border: 1px solid rgba(216, 180, 254, 0.42);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  font-weight: 850;
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.36),
+    0 10px 28px rgba(124, 58, 237, 0.28);
+}
+
+.newMessagesButton:hover {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+@media (max-width: 520px) {
+  .twoColumnFields {
+    grid-template-columns: 1fr;
+  }
+
+  .presetGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .newMessagesButton {
+    bottom: 12px;
+    max-width: calc(100% - 24px);
+  }
+}
+
+
+/* Messages without a platform icon use the full row width */
+
+.message.messageWithoutPlatform,
+.chatOnlyMessage.messageWithoutPlatform {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.message.messageWithoutPlatform .appMessageContent {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+
+/* ==============================
+   Guided tour, clean final version
+   ============================== */
+
+body.guidedTourActive {
+  overflow: hidden;
+}
+
+.guidedTourRoot,
+.guidedTourRoot * {
+  box-sizing: border-box;
+}
+
+.guidedTourRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.guidedTourFullShade,
+.guidedTourPreviewShade,
+.guidedTourShade {
+  position: fixed;
+  z-index: 20000;
+  background: rgba(2, 6, 23, 0.3);
+  backdrop-filter: blur(3px) saturate(0.82);
+  pointer-events: auto;
+}
+
+.guidedTourFullShade,
+.guidedTourPreviewShade {
+  inset: 0;
+}
+
+.guidedTourShadeTop {
+  inset: 0 0 auto 0;
+}
+
+.guidedTourShadeLeft {
+  left: 0;
+}
+
+.guidedTourShadeRight {
+  width: auto;
+}
+
+.guidedTourShadeBottom {
+  left: 0;
+  right: 0;
+  height: auto;
+}
+
+.guidedTourSpotlight {
+  position: fixed;
+  z-index: 20001;
+  border: 2px solid rgba(216, 180, 254, 0.96);
+  border-radius: 18px;
+  background: transparent;
+  box-shadow:
+    0 0 0 6px rgba(124, 58, 237, 0.2),
+    0 18px 56px rgba(124, 58, 237, 0.42);
+  pointer-events: none;
+}
+
+.guidedTourCard {
+  z-index: 20004;
+  display: grid;
+  gap: 13px;
+  padding: 20px;
+  color: #ffffff;
+  border: 1px solid rgba(216, 180, 254, 0.36);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(124, 58, 237, 0.3),
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at bottom right,
+      rgba(219, 39, 119, 0.22),
+      transparent 38%
+    ),
+    rgba(15, 23, 42, 0.985);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.52);
+  pointer-events: auto;
+}
+
+.guidedTourCardTargeted {
+  position: fixed;
+  overflow-y: auto;
+}
+
+.guidedTourCardCentered {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: min(520px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+}
+
+.guidedTourCard h2,
+.guidedTourCard p {
+  margin: 0;
+}
+
+.guidedTourCard h2 {
+  font-size: 23px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.guidedTourCard p {
+  color: #d7ddf3;
+  line-height: 1.55;
+}
+
+.guidedTourStepLabel {
+  width: fit-content;
+  padding: 5px 9px;
+  color: #ede9fe;
+  border: 1px solid rgba(216, 180, 254, 0.28);
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.22);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.guidedTourArrow {
+  position: absolute;
+  left: var(--tour-arrow-left);
+  top: var(--tour-arrow-top);
+  color: #f5d0fe;
+  font-size: 30px;
+  line-height: 1;
+  transform: rotate(var(--tour-arrow-rotation));
+  filter: drop-shadow(0 6px 12px rgba(124, 58, 237, 0.55));
+  pointer-events: none;
+}
+
+.guidedTourActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 3px;
+}
+
+.guidedTourNav {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.guidedTourActions .button {
+  width: auto;
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+.guidedTourSkipButton {
+  width: auto;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.guidedTourCompactFinish {
+  width: auto;
+  min-width: 118px;
+  justify-self: end;
+  padding-inline: 18px;
+}
+
+.guidedTourCompletionCard {
+  max-width: 480px;
+  text-align: center;
+}
+
+.guidedTourCompletionIcon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  font-size: 28px;
+  font-weight: 950;
+  box-shadow: 0 16px 38px rgba(34, 197, 94, 0.28);
+}
+
+.guidedTourCompletionPath {
+  padding: 12px 14px;
+  color: #ddd6fe;
+  border: 1px solid rgba(216, 180, 254, 0.24);
+  border-radius: 14px;
+  background: rgba(124, 58, 237, 0.14);
+  line-height: 1.5;
+}
+
+.guidedTourCompletionCard .guidedTourCompactFinish {
+  justify-self: center;
+}
+
+.guidedTourPreview {
+  position: fixed;
+  z-index: 20003;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 2px solid rgba(216, 180, 254, 0.94);
+  border-radius: 20px;
+  background: rgba(9, 13, 27, 0.995);
+  box-shadow:
+    0 0 0 6px rgba(124, 58, 237, 0.2),
+    0 30px 90px rgba(0, 0, 0, 0.66),
+    0 22px 58px rgba(124, 58, 237, 0.32);
+  scrollbar-width: thin;
+  scrollbar-color:
+    rgba(216, 180, 254, 0.72)
+    rgba(255, 255, 255, 0.06);
+  pointer-events: auto;
+}
+
+.guidedTourPreviewContent {
+  position: relative;
+  transform-origin: top left;
+}
+
+.guidedTourPreviewContent,
+.guidedTourPreviewContent *,
+.guidedTourPreviewContent *::before,
+.guidedTourPreviewContent *::after {
+  animation: none !important;
+  transition: none !important;
+  caret-color: transparent !important;
+}
+
+.guidedTourPreviewContent button,
+.guidedTourPreviewContent input,
+.guidedTourPreviewContent select,
+.guidedTourPreviewContent textarea,
+.guidedTourPreviewContent a {
+  pointer-events: none !important;
+}
+
+.guidedTourPreviewContent video,
+.guidedTourPreviewContent canvas,
+.guidedTourPreviewContent iframe {
+  visibility: hidden !important;
+}
+
+.guidedTourCardPreviewMode {
+  overflow-y: auto;
+}
+
+.tourSourceConnectBlock,
+.tourObsLinkTestBlock {
+  display: grid;
+  gap: 12px;
+}
+
+.aboutTutorialRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.aboutTutorialRow strong {
+  display: block;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.aboutTutorialRow .hint {
+  margin-top: 4px;
+}
+
+.aboutTutorialButton {
+  width: auto;
+  min-width: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .guidedTourCard {
+    padding: 16px;
+  }
+
+  .guidedTourCard h2 {
+    font-size: 20px;
+  }
+
+  .guidedTourActions {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .guidedTourNav {
+    display: flex;
+  }
+
+  .guidedTourActions .button,
+  .guidedTourSkipButton {
+    width: auto;
+  }
+
+  .aboutTutorialRow {
+    grid-template-columns: 1fr;
+  }
+
+  .aboutTutorialButton {
+    width: fit-content;
+    justify-self: start;
+  }
+}
+
+
+/* Final layout corrections */
+
+.guidedTourCard {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.guidedTourCard h2,
+.guidedTourCard p,
+.guidedTourCompletionPath {
+  overflow-wrap: anywhere;
+}
+
+.guidedTourCardTargeted,
+.guidedTourCardPreviewMode {
+  overflow-x: hidden;
+}
+
+.guidedTourActions,
+.guidedTourNav {
+  min-width: 0;
+}
+
+.guidedTourPreview {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+}
+
+.guidedTourPreviewContent {
+  transform: none;
+  transform-origin: initial;
+}
+
+.guidedTourPreviewContent > [data-tour-section-id] {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .guidedTourCard {
+    font-size: 14px;
+  }
+
+  .guidedTourActions {
+    gap: 6px;
+  }
+
+  .guidedTourNav {
+    gap: 6px;
+  }
+
+  .guidedTourActions .button,
+  .guidedTourSkipButton {
+    padding-inline: 9px;
+  }
+}
+
+
+/* ==============================
+   Stream availability indicators
+   ============================== */
+
+.sourceRow {
+  position: relative;
+}
+
+.sourceStreamDot,
+.ownStreamStatusDot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.035);
+}
+
+.sourceStreamDot.live,
+.ownStreamStatus.live .ownStreamStatusDot {
+  background: #22c55e;
+  box-shadow:
+    0 0 0 3px rgba(34, 197, 94, 0.14),
+    0 0 14px rgba(34, 197, 94, 0.48);
+}
+
+.sourceStreamDot.offline,
+.ownStreamStatus.offline .ownStreamStatusDot {
+  background: #ef4444;
+  box-shadow:
+    0 0 0 3px rgba(239, 68, 68, 0.12),
+    0 0 12px rgba(239, 68, 68, 0.35);
+}
+
+.sourceStreamDot.checking,
+.ownStreamStatus.checking .ownStreamStatusDot {
+  background: #facc15;
+  box-shadow:
+    0 0 0 3px rgba(250, 204, 21, 0.12),
+    0 0 12px rgba(250, 204, 21, 0.38);
+  animation: streamStatusPulse 1s ease-in-out infinite;
+}
+
+.sourceStreamDot.error,
+.ownStreamStatus.error .ownStreamStatusDot {
+  background: #050505;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.28);
+}
+
+@keyframes streamStatusPulse {
+  0%,
+  100% {
+    transform: scale(0.86);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sourceStreamDot {
+  margin-left: -2px;
+}
+
+.chatTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ownStreamStatusList {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ownStreamStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 9px;
+  color: #dbe4ff;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.ownStreamStatus strong {
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.ownStreamStatus.live {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.ownStreamStatus.offline {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.ownStreamStatus.checking {
+  border-color: rgba(250, 204, 21, 0.25);
+  background: rgba(250, 204, 21, 0.08);
+}
+
+.ownStreamStatus.error {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+@media (max-width: 720px) {
+  .chatTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .ownStreamStatus {
+    font-size: 11px;
+  }
+}
+
+
+/* Source status dot sits on the platform icon without adding a new grid column. */
+
+.sourcePlatformCell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+
+.sourcePlatformCell .sourceIcon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+}
+
+.sourcePlatformCell .sourceStreamDot {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 11px;
+  height: 11px;
+  margin: 0;
+  border-width: 2px;
+  border-color: #242331;
+}
+
+.sourceRow {
+  grid-template-columns: 34px 28px minmax(0, 1fr) 34px;
+}
+
+.sourceInfo {
+  overflow: hidden;
+}
+
+.removeSourceButton {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+
+/* Per-source stream indicators are intentionally hidden.
+   Stream status is shown only in the combined chat header after login. */
+
+.sourcePlatformCell,
+.sourceStreamDot {
+  display: none !important;
+}
+
+.sourceRow {
+  grid-template-columns: 34px 28px minmax(0, 1fr) 34px;
+}
+
+.sourceRow > .sourceIcon {
+  grid-column: 2;
+}
+
+.sourceRow > .sourceInfo {
+  grid-column: 3;
+}
+
+.sourceRow > .removeSourceButton {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+
+/* Space between the logged-in platform name and LIVE/OFFLINE text. */
+
+.ownStreamStatus strong + span {
+  margin-left: 5px;
 }

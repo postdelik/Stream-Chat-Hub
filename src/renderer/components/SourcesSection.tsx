@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, type Dispatch, type SetStateAction } from "react";
 import type {
   ChatSource,
   SafeTwitchAuthState,
@@ -74,8 +74,6 @@ export function SourcesSection({
   anonymousTwitchChannelName,
   setAnonymousTwitchChannelName,
 
-  chatActionStatus,
-
   toggleSource,
   removeSource,
 
@@ -84,10 +82,25 @@ export function SourcesSection({
   startTwitchLogin,
   logoutTwitch,
 }: SourcesSectionProps) {
+  useEffect(() => {
+    function handleTourAction(event: Event) {
+      const customEvent = event as CustomEvent<{ action?: string }>;
+
+      if (customEvent.detail?.action === "show-twitch-login") {
+        setActiveAddSourceTab("twitchLogin");
+      }
+    }
+
+    window.addEventListener("stream-chat-hub:tour-action", handleTourAction);
+    return () =>
+      window.removeEventListener("stream-chat-hub:tour-action", handleTourAction);
+  }, [setActiveAddSourceTab]);
+
   return (
     <CollapsibleSection
       title={t("sourcesTitle")}
       badge={`${enabledSourcesCount} ${t("activeShort")}`}
+      tourId="tour-sources"
     >
       <div className="connectionStatus">
         <p>
@@ -153,6 +166,7 @@ export function SourcesSection({
         ))}
       </div>
 
+      <div className="tourSourceConnectBlock" data-tour-id="tour-twitch-connect">
       <div className="addSourceTabs twoTabs">
         <button
           className={
@@ -257,7 +271,7 @@ export function SourcesSection({
         </div>
       )}
 
-      {chatActionStatus && <p className="copyStatus">{chatActionStatus}</p>}
+      </div>
     </CollapsibleSection>
   );
 }
