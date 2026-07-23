@@ -30,11 +30,10 @@ import {
 } from "./diagnostics";
 import { clearLogFiles, getLogsDir, logger } from "./logger";
 import { net, shell } from "electron";
+import { WYRMO_MIGRATION_MANIFEST_URL } from "../shared/links";
 
 const PORT = 3877;
 
-const GITHUB_OWNER = "postdelik";
-const GITHUB_REPO = "Stream-Chat-Hub";
 
 const TWITCH_CLIENT_ID = "18ipdprohcqbx04oykqelu0a3h92mc";
 const TWITCH_REDIRECT_URI = `http://localhost:${PORT}/twitch/auth/callback`;
@@ -224,35 +223,6 @@ function compareVersions(currentVersion: string, latestVersion: string) {
   return 0;
 }
 
-function findBestReleaseAsset(
-  assets: Array<{
-    name?: string;
-    browser_download_url?: string;
-  }>
-) {
-  const portableAsset = assets.find((asset) => {
-    const name = asset.name?.toLowerCase() || "";
-
-    return (
-      name.endsWith(".exe") &&
-      (name.includes("portable") ||
-        name.includes("stream chat hub") ||
-        name.includes("stream-chat-hub"))
-    );
-  });
-
-  if (portableAsset?.browser_download_url) {
-    return portableAsset.browser_download_url;
-  }
-
-  const exeAsset = assets.find((asset) => {
-    const name = asset.name?.toLowerCase() || "";
-    return name.endsWith(".exe");
-  });
-
-  return exeAsset?.browser_download_url || null;
-}
-
 async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
   const now = Date.now();
 
@@ -270,36 +240,32 @@ async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
   }
 
   try {
-    const response = await fetch(
-      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
-      {
-        headers: {
-          Accept: "application/vnd.github+json",
-          "User-Agent": "Stream-Chat-Hub",
-        },
-      }
-    );
+    const response = await fetch(WYRMO_MIGRATION_MANIFEST_URL, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Stream-Chat-Hub",
+      },
+    });
 
     if (!response.ok) {
-      throw new Error(`GitHub returned ${response.status}`);
+      throw new Error(`Wyrmo returned ${response.status}`);
     }
 
     const release = (await response.json()) as {
-      tag_name?: string;
-      html_url?: string;
-      body?: string;
-      assets?: Array<{
-        name?: string;
-        browser_download_url?: string;
-      }>;
+      version?: string | null;
+      releaseUrl?: string | null;
+      downloadUrl?: string | null;
+      releaseNotes?: string;
+      migration?: boolean;
     };
 
-    const latestVersion = release.tag_name
-      ? normalizeVersion(release.tag_name)
+    const latestVersion = release.version
+      ? normalizeVersion(release.version)
       : null;
 
     const updateAvailable = latestVersion
-      ? compareVersions(currentAppVersion, latestVersion) > 0
+      ? compareVersions(currentAppVersion, latestVersion) > 0 &&
+        (force || appSettings.updates?.skippedVersion !== latestVersion)
       : false;
 
     const result: UpdateCheckResult = {
@@ -307,10 +273,11 @@ async function checkForUpdates(force = false): Promise<UpdateCheckResult> {
       currentVersion: currentAppVersion,
       latestVersion,
       updateAvailable,
-      releaseUrl: release.html_url || null,
-      downloadUrl: findBestReleaseAsset(release.assets || []),
-      releaseNotes: release.body || "",
+      releaseUrl: release.releaseUrl || null,
+      downloadUrl: release.downloadUrl || null,
+      releaseNotes: release.releaseNotes || "",
       checkedAt: now,
+      migration: release.migration === true,
     };
 
     logger.updates("Update check completed", {
@@ -370,6 +337,7 @@ function createPortableUpdateScript(options: {
   currentExePath: string;
   newExePath: string;
   currentPid: number;
+  migration: boolean;
 }) {
   const scriptPath = path.join(
     os.tmpdir(),
@@ -378,14 +346,20 @@ function createPortableUpdateScript(options: {
 
   const currentExePath = escapeCmdPath(options.currentExePath);
   const newExePath = escapeCmdPath(options.newExePath);
+  const targetExePath = escapeCmdPath(
+    options.migration
+      ? path.join(path.dirname(options.currentExePath), "Wyrmo Chat.exe")
+      : options.currentExePath
+  );
   const currentPid = options.currentPid;
 
   const script = [
     "@echo off",
     "setlocal",
     `set CURRENT_PID=${currentPid}`,
-    `set CURRENT_EXE="${currentExePath}"`,
-    `set NEW_EXE="${newExePath}"`,
+    `set "CURRENT_EXE=${currentExePath}"`,
+    `set "TARGET_EXE=${targetExePath}"`,
+    `set "NEW_EXE=${newExePath}"`,
     "",
     ":wait",
     'tasklist /FI "PID eq %CURRENT_PID%" | find "%CURRENT_PID%" > nul',
@@ -395,9 +369,12 @@ function createPortableUpdateScript(options: {
     ")",
     "",
     "timeout /t 1 /nobreak > nul",
-    "copy /Y %NEW_EXE% %CURRENT_EXE%",
-    "start \"\" %CURRENT_EXE%",
-    "del %NEW_EXE%",
+    'copy /Y "%NEW_EXE%" "%TARGET_EXE%"',
+    'start "" "%TARGET_EXE%"',
+    ...(options.migration
+      ? ['if /I not "%CURRENT_EXE%"=="%TARGET_EXE%" del /Q "%CURRENT_EXE%"']
+      : []),
+    'del /Q "%NEW_EXE%"',
     "del \"%~f0\"",
     "endlocal",
     "",
@@ -408,7 +385,10 @@ function createPortableUpdateScript(options: {
   return scriptPath;
 }
 
-async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstallResult> {
+async function installPortableUpdate(
+  downloadUrl: string,
+  migration = false
+): Promise<UpdateInstallResult> {
   try {
     logger.updates("Starting portable update install", {
       downloadUrl,
@@ -442,7 +422,10 @@ async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstall
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    const downloadedExePath = path.join(tempDir, "Stream Chat Hub.new.exe");
+    const downloadedExePath = path.join(
+      tempDir,
+      migration ? "Wyrmo Chat.new.exe" : "Stream Chat Hub.new.exe"
+    );
 
     await downloadFile(downloadUrl, downloadedExePath);
 
@@ -454,6 +437,7 @@ async function installPortableUpdate(downloadUrl: string): Promise<UpdateInstall
       currentExePath: currentAppPath,
       newExePath: downloadedExePath,
       currentPid: process.pid,
+      migration,
     });
 
     logger.updates("Update script created", {
@@ -1453,6 +1437,7 @@ export async function startLocalServer(options?: LocalServerOptions) {
   server.post("/updates/install", async (request) => {
     const body = request.body as {
       downloadUrl?: string;
+      migration?: boolean;
     };
 
     const downloadUrl = body.downloadUrl || cachedUpdateCheck?.downloadUrl;
@@ -1464,7 +1449,7 @@ export async function startLocalServer(options?: LocalServerOptions) {
       } satisfies UpdateInstallResult;
     }
 
-    return installPortableUpdate(downloadUrl);
+    return installPortableUpdate(downloadUrl, body.migration === true);
   });
 
 

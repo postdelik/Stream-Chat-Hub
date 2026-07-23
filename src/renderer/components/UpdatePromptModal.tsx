@@ -41,9 +41,26 @@ export function UpdatePromptModal({
 
         <div className="updateModalIcon">⬆</div>
 
-        <h2>{t("updatePromptTitle")}</h2>
+        <h2>
+          {updateStatus.migration
+            ? t("migrationPromptTitle")
+            : t("updatePromptTitle")}
+        </h2>
 
-        <p className="updateModalText">{t("updatePromptText")}</p>
+        <p className="updateModalText">
+          {updateStatus.migration
+            ? t("migrationPromptText")
+            : t("updatePromptText")}
+        </p>
+
+        {updateStatus.migration && (
+          <ul className="migrationWarningList">
+            <li>{t("migrationWarningBrand")}</li>
+            <li>{t("migrationWarningLicense")}</li>
+            <li>{t("migrationWarningDevice")}</li>
+            <li>{t("migrationWarningConsent")}</li>
+          </ul>
+        )}
 
         <div className="updateVersionGrid">
           <span>{t("currentVersion")}</span>
@@ -73,7 +90,11 @@ export function UpdatePromptModal({
             onClick={onInstallUpdate}
             disabled={installingUpdate || !updateStatus.downloadUrl}
           >
-            {installingUpdate ? t("installingUpdate") : t("updateNow")}
+            {installingUpdate
+              ? t("installingUpdate")
+              : updateStatus.migration
+                ? t("migrationAccept")
+                : t("updateNow")}
           </button>
 
           <button
@@ -82,11 +103,11 @@ export function UpdatePromptModal({
             onClick={onDeclineUpdate}
             disabled={installingUpdate}
           >
-            {t("notNow")}
+            {updateStatus.migration ? t("migrationDecline") : t("notNow")}
           </button>
         </div>
 
-        <label className="toggleField updateDisableCheck">
+        {!updateStatus.migration && <label className="toggleField updateDisableCheck">
           <input
             type="checkbox"
             checked={disableUpdateCheckOnDecline}
@@ -96,9 +117,9 @@ export function UpdatePromptModal({
             disabled={installingUpdate}
           />
           <span>{t("disableUpdateCheck")}</span>
-        </label>
+        </label>}
 
-        {disableUpdateCheckOnDecline && (
+        {!updateStatus.migration && disableUpdateCheckOnDecline && (
           <p className="hint">{t("enableUpdatesAgainHint")}</p>
         )}
       </section>

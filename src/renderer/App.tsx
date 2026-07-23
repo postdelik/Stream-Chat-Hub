@@ -819,6 +819,7 @@ export function App() {
         },
         body: JSON.stringify({
           downloadUrl: updateStatus.downloadUrl,
+          migration: updateStatus.migration === true,
         }),
       });
 
@@ -839,6 +840,20 @@ export function App() {
 
   async function declineUpdate() {
     setShowUpdatePrompt(false);
+
+    if (updateStatus?.migration && updateStatus.latestVersion) {
+      const nextSettings = {
+        ...updateSettings,
+        skippedVersion: updateStatus.latestVersion,
+      };
+      setUpdateSettings(nextSettings);
+      await fetch("http://localhost:3877/updates/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextSettings),
+      });
+      return;
+    }
 
     if (!disableUpdateCheckOnDecline) {
       return;

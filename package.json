@@ -1,6 +1,6 @@
 {
   "name": "stream-chat-hub",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Stream Chat Hub beta",
   "main": "dist-main/main/main.js",
   "author": "postdelik",

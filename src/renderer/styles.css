@@ -1132,6 +1132,18 @@ code {
   gap: 10px;
 }
 
+.migrationWarningList {
+  display: grid;
+  gap: 9px;
+  margin: 18px 0;
+  padding: 15px 18px 15px 36px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 14px;
+  background: rgba(245, 158, 11, 0.08);
+  color: #e8dfcf;
+  line-height: 1.45;
+}
+
 .updateDisableCheck {
   margin-top: 4px;
 }

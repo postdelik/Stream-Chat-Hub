@@ -274,6 +274,16 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     updatePromptTitle: "Доступна новая версия",
     updatePromptText:
       "Найдена новая версия Stream Chat Hub. Хотите обновить приложение сейчас?",
+    migrationPromptTitle: "Переход на Wyrmo Chat",
+    migrationPromptText:
+      "Это обновление заменит Stream Chat Hub новым приложением Wyrmo Chat.",
+    migrationWarningBrand: "Изменятся название приложения и система обновлений.",
+    migrationWarningLicense: "Для работы потребуется лицензия Wyrmo.",
+    migrationWarningDevice: "Одна лицензия может быть активна только на одном ПК.",
+    migrationWarningConsent:
+      "При отказе текущая версия Stream Chat Hub останется без изменений.",
+    migrationAccept: "Согласен, перейти на Wyrmo",
+    migrationDecline: "Нет, оставить текущую версию",
     updateNow: "Обновить",
     notNow: "Нет",
     disableUpdateCheck: "Выключить проверку обновлений",
@@ -595,6 +605,16 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     updatePromptTitle: "New version available",
     updatePromptText:
       "A new version of Stream Chat Hub was found. Do you want to update the app now?",
+    migrationPromptTitle: "Move to Wyrmo Chat",
+    migrationPromptText:
+      "This update will replace Stream Chat Hub with the new Wyrmo Chat application.",
+    migrationWarningBrand: "The application name and update system will change.",
+    migrationWarningLicense: "A Wyrmo license will be required.",
+    migrationWarningDevice: "One license can be active on one PC only.",
+    migrationWarningConsent:
+      "If declined, the current Stream Chat Hub version remains unchanged.",
+    migrationAccept: "Agree and move to Wyrmo",
+    migrationDecline: "No, keep current version",
     updateNow: "Update",
     notNow: "No",
     disableUpdateCheck: "Disable update checks",

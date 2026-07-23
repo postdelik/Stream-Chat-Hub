@@ -68,6 +68,7 @@ export type UpdateCheckResult = {
   downloadUrl: string | null;
   releaseNotes: string;
   checkedAt: number;
+  migration?: boolean;
   error?: string;
 };
 
