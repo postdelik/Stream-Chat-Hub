@@ -1,4 +1,4 @@
-export type ChatPlatform = "twitch" | "youtube" | "mock";
+export type ChatPlatform = "twitch" | "mock";
 
 export type OverlayPosition = "left" | "center" | "right";
 
@@ -40,7 +40,6 @@ export type AppChatAppearanceSettings = {
 
 export type ChatMessageEmoteProvider =
   | "twitch"
-  | "youtube"
   | "7tv"
   | "bttv"
   | "ffz";
@@ -51,7 +50,7 @@ export type ChatMessageEmote = {
   start: number;
   end: number;
   url: string;
-  platform: "twitch" | "youtube" | "thirdParty";
+  platform: "twitch" | "thirdParty";
   provider?: ChatMessageEmoteProvider;
 };
 
@@ -195,33 +194,14 @@ export type SafeTwitchAuthState = {
   hasToken: boolean;
 };
 
-export type YouTubeAuthState = {
-  enabled: boolean;
-  accessToken: string | null;
-  refreshToken: string | null;
-  scopes: string[];
-  expiresAt: number | null;
-};
-
-export type SafeYouTubeAuthState = {
-  enabled: boolean;
-  scopes: string[];
-  expiresAt: number | null;
-  hasAccessToken: boolean;
-  hasRefreshToken: boolean;
-  configured: boolean;
-};
-
 export type AppSettings = {
   sources: ChatSource[];
-  youtubeApiKey: string;
   overlay: OverlaySettings;
   updates: UpdateSettings;
   twitchEmotes: TwitchEmoteSettings;
   onboarding: OnboardingSettings;
   appChatAppearance: AppChatAppearanceSettings;
   twitchAuth?: TwitchAuthState;
-  youtubeAuth?: YouTubeAuthState;
 };
 
 export type TwitchConnectionStatus = {
@@ -230,20 +210,6 @@ export type TwitchConnectionStatus = {
   error: string | null;
   authenticated: boolean;
   username: string | null;
-};
-
-export type YouTubeSourceConnectionStatus = {
-  id: string;
-  platform: "youtube";
-  channelName: string;
-  connected: boolean;
-  error: string | null;
-};
-
-export type YouTubeConnectionStatus = {
-  connected: boolean;
-  sources: YouTubeSourceConnectionStatus[];
-  error: string | null;
 };
 
 export type TwitchViewerCount = {

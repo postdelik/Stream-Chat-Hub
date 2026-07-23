@@ -5,6 +5,11 @@ type TranslationMap = Record<string, string>;
 export const translations: Record<AppLanguage, TranslationMap> = {
   ru: {
     appTitle: "Stream Chat Hub",
+    movedToWyrmoTitle: "Stream Chat Hub переехал в Wyrmo",
+    movedToWyrmoText:
+      "Новые версии приложения теперь будут доступны на официальном сайте.",
+    goToWyrmo: "Перейти на Wyrmo",
+    officialWebsite: "Официальный сайт Wyrmo",
     onboardingChoiceTitle: "Добро пожаловать в Stream Chat Hub",
     onboardingChoiceText:
       "Хочешь пройти короткое обучение по источникам чата, OBS overlay, настройкам приложения, обновлениям и диагностике?",
@@ -97,7 +102,6 @@ export const translations: Record<AppLanguage, TranslationMap> = {
 
     anonymousTab: "Без логина",
     twitchLoginTab: "Twitch Login",
-    youtubeLaterTab: "YouTube позже",
 
     twitchConnection: "Twitch-соединение",
     connectedToChannels: "подключено каналов:",
@@ -129,12 +133,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     addChannelViaLogin: "Добавить канал через Login",
     reconnectAfterLogin: "После входа приложение переподключит источники.",
 
-    youtubeConnection: "YouTube-соединение",
     connectedSources: "подключено источников",
-    youtubeWillBeLater: "YouTube будет позже",
-    youtubeWillBeLaterHint: "YouTube временно скрыт.",
-    youtubeLinkOrVideoId: "YouTube Live URL или videoId",
-    youtubeApiKey: "YouTube API key",
 
     chatTitle: "Общий чат",
     messages: "сообщений",
@@ -301,7 +300,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     connectingSources: "Подключаю источники...",
     connectSourcesFailed: "Не удалось подключить источники",
     diagnosticsTitle: "Диагностика и логи",
-    diagnosticsHint:"Если что-то сломалось, можно собрать диагностический архив и отправить его разработчику. Токены Twitch и YouTube в архив не попадают.",
+    diagnosticsHint:"Если что-то сломалось, можно собрать диагностический архив и отправить его разработчику. Токен Twitch в архив не попадает.",
     diagnosticsAppVersion: "Версия приложения",
     diagnosticsPlatform: "Платформа",
     diagnosticsNode: "Node.js",
@@ -327,6 +326,11 @@ export const translations: Record<AppLanguage, TranslationMap> = {
 
   en: {
     appTitle: "Stream Chat Hub",
+    movedToWyrmoTitle: "Stream Chat Hub has moved to Wyrmo",
+    movedToWyrmoText:
+      "New versions of the application are now available from the official website.",
+    goToWyrmo: "Go to Wyrmo",
+    officialWebsite: "Official Wyrmo website",
     onboardingChoiceTitle: "Welcome to Stream Chat Hub",
     onboardingChoiceText:
       "Would you like a short tutorial about chat sources, the OBS overlay, app settings, updates, and diagnostics?",
@@ -419,7 +423,6 @@ export const translations: Record<AppLanguage, TranslationMap> = {
 
     anonymousTab: "No login",
     twitchLoginTab: "Twitch Login",
-    youtubeLaterTab: "YouTube later",
 
     twitchConnection: "Twitch connection",
     connectedToChannels: "connected channels:",
@@ -451,12 +454,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     addChannelViaLogin: "Add channel via Login",
     reconnectAfterLogin: "After login the app will reconnect sources.",
 
-    youtubeConnection: "YouTube connection",
     connectedSources: "connected sources",
-    youtubeWillBeLater: "YouTube will be later",
-    youtubeWillBeLaterHint: "YouTube is temporarily hidden.",
-    youtubeLinkOrVideoId: "YouTube Live URL or videoId",
-    youtubeApiKey: "YouTube API key",
 
     chatTitle: "Main chat",
     messages: "messages",
@@ -624,7 +622,7 @@ export const translations: Record<AppLanguage, TranslationMap> = {
     connectSourcesFailed: "Failed to connect sources",
     diagnosticsTitle: "Diagnostics and logs",
     diagnosticsHint:
-      "If something breaks, you can create a diagnostics archive and send it to the developer. Twitch and YouTube tokens are not included.",
+      "If something breaks, you can create a diagnostics archive and send it to the developer. The Twitch token is not included.",
     diagnosticsAppVersion: "App version",
     diagnosticsPlatform: "Platform",
     diagnosticsNode: "Node.js",

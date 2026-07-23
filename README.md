@@ -236,7 +236,6 @@ See `ROADMAP.md` for the detailed plan.
 
 ### Notes
 
-YouTube support is planned for later and is not currently the main focus.
 
 ---
 
@@ -459,5 +458,3 @@ src/
 Подробный план находится в `ROADMAP.md`.
 
 ### Примечания
-
-Поддержка YouTube планируется позже и сейчас не является основным направлением.

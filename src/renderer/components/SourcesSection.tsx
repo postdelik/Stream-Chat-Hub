@@ -2,9 +2,7 @@ import { useEffect, type Dispatch, type SetStateAction } from "react";
 import type {
   ChatSource,
   SafeTwitchAuthState,
-  SafeYouTubeAuthState,
   TwitchConnectionStatus,
-  YouTubeConnectionStatus,
 } from "../../shared/types";
 import { getSourcePlatformLabel } from "../utils/chat";
 import {
@@ -12,22 +10,18 @@ import {
   MiniCollapsibleSection,
 } from "./common/CollapsibleSection";
 
-export type AddSourceTab = "anonymousTwitch" | "twitchLogin" | "youtube";
+export type AddSourceTab = "anonymousTwitch" | "twitchLogin";
 
 type SourcesSectionProps = {
   t: (key: string) => string;
 
   enabledSourcesCount: number;
   twitchSourcesCount: number;
-  youtubeSourcesCount: number;
-  connectedYoutubeSourcesCount: number;
 
   sources: ChatSource[];
 
   twitchStatus: TwitchConnectionStatus;
   twitchAuthStatus: SafeTwitchAuthState;
-  youtubeStatus: YouTubeConnectionStatus;
-  youtubeAuthStatus: SafeYouTubeAuthState;
 
   activeAddSourceTab: AddSourceTab;
   setActiveAddSourceTab: Dispatch<SetStateAction<AddSourceTab>>;
@@ -38,9 +32,6 @@ type SourcesSectionProps = {
   authTwitchChannelName: string;
   setAuthTwitchChannelName: Dispatch<SetStateAction<string>>;
 
-  youtubeInput: string;
-  setYoutubeInput: Dispatch<SetStateAction<string>>;
-
   chatActionStatus: string;
 
   toggleSource: (sourceId: string) => void;
@@ -48,13 +39,9 @@ type SourcesSectionProps = {
 
   addAnonymousTwitchSource: () => void;
   addAuthTwitchSource: () => void;
-  addYouTubeSource: () => void;
-
   startTwitchLogin: () => void;
   logoutTwitch: () => void;
 
-  startYouTubeLogin: () => void;
-  logoutYouTube: () => void;
 };
 
 export function SourcesSection({
@@ -142,16 +129,12 @@ export function SourcesSection({
             </button>
 
             <span className="sourceIcon">
-              {source.platform === "twitch" ? "🟣" : "🔴"}
+              🟣
             </span>
 
             <div className="sourceInfo">
               <strong>{getSourcePlatformLabel(source.platform)}</strong>
-              <span>
-                {source.platform === "twitch"
-                  ? `#${source.channelName}`
-                  : source.channelName}
-              </span>
+              <span>#{source.channelName}</span>
             </div>
 
             <button

@@ -1,5 +1,6 @@
 import type { UpdateCheckResult, UpdateSettings } from "../../shared/types";
 import { CollapsibleSection } from "./common/CollapsibleSection";
+import { WYRMO_MOVED_URL } from "../../shared/links";
 
 type UpdatesSectionProps = {
   t: (key: string) => string;
@@ -27,6 +28,18 @@ export function UpdatesSection({
   return (
     <CollapsibleSection title={t("updatesTitle")} badge={badge} tourId="tour-updates">
       <div className="updatesBox">
+        <div className="migrationUpdateBox">
+          <strong>{t("movedToWyrmoTitle")}</strong>
+          <p>{t("movedToWyrmoText")}</p>
+          <a
+            className="button"
+            href={WYRMO_MOVED_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("goToWyrmo")}
+          </a>
+        </div>
         <label className="switchField">
   <span>{t("autoCheckUpdates")}</span>
 

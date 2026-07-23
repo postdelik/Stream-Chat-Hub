@@ -38,13 +38,6 @@ function redactAuth<T extends AppSettings>(settings: T): AppSettings {
           accessToken: null,
         }
       : undefined,
-    youtubeAuth: settings.youtubeAuth
-      ? {
-          ...settings.youtubeAuth,
-          accessToken: null,
-          refreshToken: null,
-        }
-      : undefined,
   };
 }
 

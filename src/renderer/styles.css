@@ -343,10 +343,6 @@ input:disabled {
   color: rgba(226, 232, 240, 0.45);
 }
 
-.youtubeApiKeyField {
-  opacity: 0.82;
-}
-
 .filterField {
   margin-top: 10px;
 }
@@ -590,10 +586,6 @@ code {
 
 .twitchPlatform {
   background: linear-gradient(135deg, #9146ff, #5b21b6);
-}
-
-.youtubePlatform {
-  background: linear-gradient(135deg, #ff0033, #991b1b);
 }
 
 .mockPlatform {
@@ -2452,4 +2444,47 @@ body.guidedTourActive {
 
 .ownStreamStatus strong + span {
   margin-left: 5px;
+}
+.migrationBanner {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.38);
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.22),
+    rgba(56, 189, 248, 0.08)
+  );
+}
+
+.migrationBanner span {
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.migrationBanner a {
+  color: #c4b5fd;
+  font-weight: 800;
+}
+
+.migrationUpdateBox {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 14px;
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.migrationUpdateBox p {
+  margin: 0;
+  color: rgba(226, 232, 240, 0.76);
+}
+
+.migrationUpdateBox .button {
+  width: fit-content;
 }

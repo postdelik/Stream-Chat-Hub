@@ -11,7 +11,6 @@ const tmi = require("tmi.js");
 type TwitchUserState = {
   username?: string;
   "display-name"?: string;
-  badges?: Record<string, string>;
   id?: string;
   emotes?: Record<string, string[]> | null;
   "room-id"?: string;

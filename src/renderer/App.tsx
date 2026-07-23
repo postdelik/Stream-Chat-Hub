@@ -11,23 +11,19 @@ import type {
   OverlayStyleMode,
   OwnStreamStatus,
   SafeTwitchAuthState,
-  SafeYouTubeAuthState,
   SourceStreamStatus,
-  StreamAvailabilityState,
   TwitchConnectionStatus,
   TwitchEmoteSettings,
   TwitchViewersStatus,
   UpdateCheckResult,
   UpdateInstallResult,
   UpdateSettings,
-  YouTubeConnectionStatus,
 } from "../shared/types";
 import { languageStorageKey, overlayUrl } from "./constants";
 import { translations, type AppLanguage } from "./i18n/translations";
 import {
   createSourceId,
   normalizeSourceInput,
-  normalizeYouTubeInput,
 } from "./utils/chat";
 import { clampNumber } from "./utils/numbers";
 import { AboutSection } from "./components/AboutSection";
@@ -44,6 +40,7 @@ import {
 import { SourcesSection, type AddSourceTab } from "./components/SourcesSection";
 import { UpdatePromptModal } from "./components/UpdatePromptModal";
 import { UpdatesSection } from "./components/UpdatesSection";
+import { WYRMO_MOVED_URL } from "../shared/links";
 
 function getSavedLanguage(): AppLanguage | null {
   const value = localStorage.getItem(languageStorageKey);
@@ -58,27 +55,12 @@ const defaultTwitchStatus: TwitchConnectionStatus = {
   username: null,
 };
 
-const defaultYouTubeStatus: YouTubeConnectionStatus = {
-  connected: false,
-  sources: [],
-  error: null,
-};
-
 const defaultTwitchAuthStatus: SafeTwitchAuthState = {
   enabled: false,
   username: null,
   scopes: [],
   expiresAt: null,
   hasToken: false,
-};
-
-const defaultYouTubeAuthStatus: SafeYouTubeAuthState = {
-  enabled: false,
-  scopes: [],
-  expiresAt: null,
-  hasAccessToken: false,
-  hasRefreshToken: false,
-  configured: false,
 };
 
 const defaultTwitchViewersStatus: TwitchViewersStatus = {
@@ -91,40 +73,13 @@ function normalizeChannelName(value: string) {
   return value.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
 }
 
-function classifyYouTubeSourceState(
-  sourceStatus:
-    | YouTubeConnectionStatus["sources"][number]
-    | undefined,
-  globalError: string | null
-): StreamAvailabilityState {
-  if (sourceStatus?.connected) {
-    return "live";
-  }
-
-  const errorText = String(
-    sourceStatus?.error || globalError || ""
-  ).toLowerCase();
-
-  if (
-    errorText.includes("нет активного live-чата") ||
-    errorText.includes("no active live chat") ||
-    errorText.includes("нет активного live")
-  ) {
-    return "offline";
-  }
-
-  return "error";
-}
-
 function buildSourceStreamStatuses({
   sources,
   twitchViewersStatus,
-  youtubeStatus,
   checking,
 }: {
   sources: ChatSource[];
   twitchViewersStatus: TwitchViewersStatus;
-  youtubeStatus: YouTubeConnectionStatus;
   checking: boolean;
 }): SourceStreamStatus[] {
   return sources
@@ -141,68 +96,43 @@ function buildSourceStreamStatuses({
         };
       }
 
-      if (source.platform === "twitch") {
-        const normalizedName = normalizeChannelName(source.channelName);
-        const channel = twitchViewersStatus.channels.find(
-          (item) =>
-            normalizeChannelName(item.channelName) === normalizedName
-        );
+      const normalizedName = normalizeChannelName(source.channelName);
+      const channel = twitchViewersStatus.channels.find(
+        (item) =>
+          normalizeChannelName(item.channelName) === normalizedName
+      );
 
-        if (!channel) {
-          return {
-            sourceId: source.id,
-            platform: source.platform,
-            channelName: source.channelName,
-            state: "error" as const,
-            viewerCount: null,
-            error:
-              twitchViewersStatus.error ||
-              "Не удалось получить статус Twitch",
-          };
-        }
-
-        if (channel.error) {
-          return {
-            sourceId: source.id,
-            platform: source.platform,
-            channelName: source.channelName,
-            state: "error" as const,
-            viewerCount: null,
-            error: channel.error,
-          };
-        }
-
+      if (!channel) {
         return {
           sourceId: source.id,
           platform: source.platform,
           channelName: source.channelName,
-          state: channel.live ? ("live" as const) : ("offline" as const),
-          viewerCount: channel.live ? channel.viewerCount : null,
-          error: null,
+          state: "error" as const,
+          viewerCount: null,
+          error:
+            twitchViewersStatus.error ||
+            "Не удалось получить статус Twitch",
         };
       }
 
-      const sourceStatus = youtubeStatus.sources.find(
-        (item) => item.id === source.id
-      );
-
-      const state = classifyYouTubeSourceState(
-        sourceStatus,
-        youtubeStatus.error
-      );
+      if (channel.error) {
+        return {
+          sourceId: source.id,
+          platform: source.platform,
+          channelName: source.channelName,
+          state: "error" as const,
+          viewerCount: null,
+          error: channel.error,
+        };
+      }
 
       return {
         sourceId: source.id,
         platform: source.platform,
         channelName: source.channelName,
-        state,
-        viewerCount: null,
-        error:
-          state === "error"
-            ? sourceStatus?.error ||
-              youtubeStatus.error ||
-              "Не удалось получить статус YouTube"
-            : null,
+        state: channel.live ? ("live" as const) : ("offline" as const),
+        viewerCount: channel.live ? channel.viewerCount : null,
+        error: null,
       };
     });
 }
@@ -349,19 +279,12 @@ export function App() {
   const [anonymousTwitchChannelName, setAnonymousTwitchChannelName] =
     useState("");
   const [authTwitchChannelName, setAuthTwitchChannelName] = useState("");
-  const [youtubeInput, setYoutubeInput] = useState("");
 
   const [twitchAuthStatus, setTwitchAuthStatus] =
     useState<SafeTwitchAuthState>(defaultTwitchAuthStatus);
 
-  const [youtubeAuthStatus, setYouTubeAuthStatus] =
-    useState<SafeYouTubeAuthState>(defaultYouTubeAuthStatus);
-
   const [twitchStatus, setTwitchStatus] =
     useState<TwitchConnectionStatus>(defaultTwitchStatus);
-
-  const [youtubeStatus, setYoutubeStatus] =
-    useState<YouTubeConnectionStatus>(defaultYouTubeStatus);
 
   const [twitchViewersStatus, setTwitchViewersStatus] =
     useState<TwitchViewersStatus>(defaultTwitchViewersStatus);
@@ -440,26 +363,16 @@ export function App() {
     (source) => source.enabled && source.platform === "twitch"
   ).length;
 
-  const youtubeSourcesCount = sources.filter(
-    (source) => source.enabled && source.platform === "youtube"
-  ).length;
-
-  const connectedYoutubeSourcesCount = youtubeStatus.sources.filter(
-    (source) => source.connected
-  ).length;
-
   const sourceStreamStatuses = useMemo(
     () =>
       buildSourceStreamStatuses({
         sources,
         twitchViewersStatus,
-        youtubeStatus,
         checking: streamStatusChecking,
       }),
     [
       sources,
       twitchViewersStatus,
-      youtubeStatus,
       streamStatusChecking,
     ]
   );
@@ -517,32 +430,6 @@ export function App() {
       }
     }
 
-    const enabledYouTubeSources = sources.filter(
-      (source) =>
-        source.enabled && source.platform === "youtube"
-    );
-
-    if (
-      youtubeAuthStatus.enabled &&
-      youtubeAuthStatus.hasAccessToken &&
-      enabledYouTubeSources.length === 1
-    ) {
-      const source = enabledYouTubeSources[0];
-      const sourceStatus = sourceStreamStatuses.find(
-        (item) => item.sourceId === source.id
-      );
-
-      if (sourceStatus) {
-        statuses.push({
-          platform: "youtube",
-          channelName: source.channelName,
-          state: sourceStatus.state,
-          viewerCount: null,
-          error: sourceStatus.error,
-        });
-      }
-    }
-
     return statuses;
   }, [
     sources,
@@ -550,7 +437,6 @@ export function App() {
     streamStatusChecking,
     twitchAuthStatus,
     twitchViewersStatus,
-    youtubeAuthStatus,
   ]);
 
   const ownTwitchStreamStatus = ownStreamStatuses.find(
@@ -616,7 +502,6 @@ export function App() {
   const appSettings = useMemo<AppSettings>(() => {
     return {
       sources,
-      youtubeApiKey: "",
       overlay: overlaySettings,
       updates: updateSettings,
       twitchEmotes,
@@ -833,33 +718,14 @@ export function App() {
     }
   }
 
-  async function loadYouTubeAuthStatus() {
-    try {
-      const response = await fetch("http://localhost:3877/youtube/auth/status");
-      const data = (await response.json()) as SafeYouTubeAuthState;
-      setYouTubeAuthStatus(data);
-      return data;
-    } catch {
-      return defaultYouTubeAuthStatus;
-    }
-  }
-
   async function loadTwitchViewersStatus() {
     setStreamStatusChecking(true);
 
     try {
-      const [twitchResponse, youtubeResponse] = await Promise.all([
-        fetch("http://localhost:3877/twitch/viewers"),
-        fetch("http://localhost:3877/youtube/status"),
-      ]);
-
-      const twitchData =
-        (await twitchResponse.json()) as TwitchViewersStatus;
-      const youtubeData =
-        (await youtubeResponse.json()) as YouTubeConnectionStatus;
+      const twitchResponse = await fetch("http://localhost:3877/twitch/viewers");
+      const twitchData = (await twitchResponse.json()) as TwitchViewersStatus;
 
       setTwitchViewersStatus(twitchData);
-      setYoutubeStatus(youtubeData);
 
       return twitchData;
     } catch {
@@ -1021,10 +887,6 @@ export function App() {
     }, 1000);
   }
 
-  function startYouTubeLogin() {
-    setChatActionStatus("YouTube временно скрыт");
-  }
-
   async function logoutTwitch() {
     try {
       const response = await fetch("http://localhost:3877/twitch/auth/logout", {
@@ -1044,10 +906,6 @@ export function App() {
     } catch {
       setChatActionStatus(t("twitchLogoutFailed"));
     }
-  }
-
-  async function logoutYouTube() {
-    setChatActionStatus("YouTube временно скрыт");
   }
 
   function applyOverlayPreset(
@@ -1155,17 +1013,6 @@ export function App() {
     );
   }
 
-  function addYouTubeSource() {
-    const channelName = normalizeYouTubeInput(youtubeInput);
-
-    if (!channelName) {
-      setChatActionStatus(t("enterChannel"));
-      return;
-    }
-
-    setChatActionStatus("YouTube временно скрыт");
-  }
-
   function removeSource(sourceId: string) {
     const nextSources = sources.filter((source) => source.id !== sourceId);
     setSources(nextSources);
@@ -1254,7 +1101,6 @@ export function App() {
         },
         body: JSON.stringify({
           sources: nextSources,
-          youtubeApiKey: "",
           twitchEmotes: nextTwitchEmotes,
         }),
       });
@@ -1262,14 +1108,12 @@ export function App() {
       const data = (await response.json()) as {
         ok: boolean;
         twitchStatus: TwitchConnectionStatus;
-        youtubeStatus: YouTubeConnectionStatus;
         mockStatus?: {
           running: boolean;
         };
       };
 
       setTwitchStatus(data.twitchStatus);
-      setYoutubeStatus(data.youtubeStatus);
       await loadTwitchViewersStatus();
 
       if (data.mockStatus) {
@@ -1393,7 +1237,6 @@ export function App() {
 
     loadInitialSettings();
     loadTwitchAuthStatus();
-    loadYouTubeAuthStatus();
     loadTwitchViewersStatus();
   }, []);
 
@@ -1474,14 +1317,6 @@ export function App() {
         // ignore
       }
 
-      try {
-        const youtubeResponse = await fetch("http://localhost:3877/youtube/status");
-        const youtubeData =
-          (await youtubeResponse.json()) as YouTubeConnectionStatus;
-        setYoutubeStatus(youtubeData);
-      } catch {
-        // ignore
-      }
     }
 
     loadStatuses();
@@ -1606,36 +1441,34 @@ export function App() {
 
       <aside className="sidebar">
         <h1>{t("appTitle")}</h1>
+        <div className="migrationBanner">
+          <strong>{t("movedToWyrmoTitle")}</strong>
+          <span>{t("movedToWyrmoText")}</span>
+          <a href={WYRMO_MOVED_URL} target="_blank" rel="noreferrer">
+            {t("goToWyrmo")}
+          </a>
+        </div>
 
         <SourcesSection
           t={t}
           enabledSourcesCount={enabledSourcesCount}
           twitchSourcesCount={twitchSourcesCount}
-          youtubeSourcesCount={youtubeSourcesCount}
-          connectedYoutubeSourcesCount={connectedYoutubeSourcesCount}
           sources={sources}
           twitchStatus={twitchStatus}
           twitchAuthStatus={twitchAuthStatus}
-          youtubeStatus={youtubeStatus}
-          youtubeAuthStatus={youtubeAuthStatus}
           activeAddSourceTab={activeAddSourceTab}
           setActiveAddSourceTab={setActiveAddSourceTab}
           anonymousTwitchChannelName={anonymousTwitchChannelName}
           setAnonymousTwitchChannelName={setAnonymousTwitchChannelName}
           authTwitchChannelName={authTwitchChannelName}
           setAuthTwitchChannelName={setAuthTwitchChannelName}
-          youtubeInput={youtubeInput}
-          setYoutubeInput={setYoutubeInput}
           chatActionStatus={chatActionStatus}
           toggleSource={toggleSource}
           removeSource={removeSource}
           addAnonymousTwitchSource={addAnonymousTwitchSource}
           addAuthTwitchSource={addAuthTwitchSource}
-          addYouTubeSource={addYouTubeSource}
           startTwitchLogin={startTwitchLogin}
           logoutTwitch={logoutTwitch}
-          startYouTubeLogin={startYouTubeLogin}
-          logoutYouTube={logoutYouTube}
         />
 
         <OverlayObsSection

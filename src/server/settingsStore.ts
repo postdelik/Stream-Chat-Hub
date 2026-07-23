@@ -85,7 +85,6 @@ const DEFAULT_OVERLAY_SETTINGS: OverlaySettings = {
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
   sources: [],
-  youtubeApiKey: "",
   overlay: DEFAULT_OVERLAY_SETTINGS,
   updates: DEFAULT_UPDATE_SETTINGS,
   twitchEmotes: DEFAULT_TWITCH_EMOTE_SETTINGS,
@@ -163,26 +162,11 @@ function normalizeTwitchChannelName(channelName: unknown) {
   return channelName.trim().replace(/^#/, "").replace(/^@/, "").toLowerCase();
 }
 
-function normalizeYouTubeInput(channelName: unknown) {
-  if (typeof channelName !== "string") {
-    return "";
-  }
-
-  return channelName.trim();
-}
-
 function normalizeSource(value: unknown): ChatSource | null {
   const data = value as Partial<ChatSource>;
 
-  const platform =
-    data.platform === "youtube" || data.platform === "twitch"
-      ? data.platform
-      : "twitch";
-
-  const channelName =
-    platform === "twitch"
-      ? normalizeTwitchChannelName(data.channelName)
-      : normalizeYouTubeInput(data.channelName);
+  const platform = "twitch" as const;
+  const channelName = normalizeTwitchChannelName(data.channelName);
 
   if (!channelName) {
     return null;
@@ -478,7 +462,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
 
   return {
     sources: migratedSources,
-    youtubeApiKey: normalizeString(data.youtubeApiKey),
     overlay: normalizeOverlaySettings(data.overlay),
     updates: normalizeUpdateSettings(data.updates),
     twitchEmotes: normalizeTwitchEmoteSettings(data.twitchEmotes),
@@ -487,7 +470,6 @@ export function normalizeAppSettings(value: unknown): AppSettings {
       data.appChatAppearance
     ),
     twitchAuth: data.twitchAuth,
-    youtubeAuth: data.youtubeAuth,
   };
 }
 

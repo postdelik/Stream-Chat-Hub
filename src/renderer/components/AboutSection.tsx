@@ -1,5 +1,6 @@
 import { CollapsibleSection } from "./common/CollapsibleSection";
 import type { AppLanguage } from "../i18n/translations";
+import { WYRMO_SITE_URL } from "../../shared/links";
 
 type AboutSectionProps = {
   language: AppLanguage;
@@ -15,10 +16,10 @@ export function AboutSection({
   startOnboarding,
 }: AboutSectionProps) {
   return (
-    <CollapsibleSection title={t("aboutTitle")} badge="v0.6.0" tourId="tour-about">
+    <CollapsibleSection title={t("aboutTitle")} badge="v0.6.1" tourId="tour-about">
       <div className="aboutBox">
         <p>
-          <strong>Stream Chat Hub</strong> beta v0.6.0
+          <strong>Stream Chat Hub</strong> beta v0.6.1
         </p>
 
         <div className="aboutTutorialRow">
@@ -37,12 +38,8 @@ export function AboutSection({
         </div>
 
         <div className="linkList">
-          <a
-            href="https://github.com/postdelik/Stream-Chat-Hub"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t("projectGithub")}
+          <a href={WYRMO_SITE_URL} target="_blank" rel="noreferrer">
+            {t("officialWebsite")}
           </a>
 
           <a

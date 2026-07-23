@@ -9,7 +9,7 @@ Stream Chat Hub 0.6.0 is a major interface and usability update.
 - Unified OBS Overlay settings
 - Separate application appearance settings
 - Smarter chat scrolling
-- Authenticated Twitch/YouTube stream status in the combined chat header
+- Authenticated Twitch stream status in the combined chat header
 - Viewer counter hidden until Twitch Login
 - Improved responsive layout and many UI fixes
 
@@ -56,7 +56,7 @@ When new messages arrive:
 
 ## Stream status
 
-After Twitch or YouTube Login, the platform name and current stream status appear next to the combined chat title.
+After Twitch Login, the platform name and current stream status appear next to the combined chat title.
 
 Status colors:
 
@@ -128,7 +128,7 @@ Sensitive authentication data will not be included.
 - Diagnostics and logs section.
 - Diagnostics archive export.
 - Save dialog for choosing where to save the diagnostics archive.
-- Safe settings export without Twitch and YouTube tokens.
+- Safe settings export without Twitch tokens.
 - App version and system information inside diagnostics archive.
 - Local server logs.
 - Update check logs.
@@ -158,7 +158,7 @@ Sensitive authentication data will not be included.
 - Секция “Диагностика и логи”.
 - Экспорт диагностического архива.
 - Окно выбора места сохранения диагностического архива.
-- Безопасный экспорт настроек без Twitch и YouTube токенов.
+- Безопасный экспорт настроек без Twitch-токенов.
 - Информация о версии приложения и системе внутри диагностического архива.
 - Логи local server.
 - Логи проверки обновлений.
@@ -403,7 +403,6 @@ Sensitive authentication data will not be included.
 - Local server structure.
 
 ### Fixed
-- Twitch login issue that incorrectly displayed a YouTube OAuth error.
 - Active sources count issues.
 - Duplicate Twitch login/read UI confusion.
 - Viewer count visibility logic.
@@ -432,7 +431,6 @@ Sensitive authentication data will not be included.
 - Структура local server.
 
 ### Исправлено
-- Ошибка, когда при Twitch Login показывалось сообщение про YouTube OAuth.
 - Проблемы с количеством активных источников.
 - Путаница с дублированием Twitch Login / Twitch read.
 - Логика отображения количества зрителей.

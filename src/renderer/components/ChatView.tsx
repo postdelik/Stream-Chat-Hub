@@ -32,8 +32,6 @@ function getEmoteProviderLabel(emote: ChatMessageEmote) {
       return "BetterTTV";
     case "ffz":
       return "FrankerFaceZ";
-    case "youtube":
-      return "YouTube";
     case "twitch":
     default:
       return "Twitch";
@@ -434,7 +432,7 @@ export function ChatView({
                   >
                     <span className="ownStreamStatusDot" />
                     <strong>
-                      {status.platform === "twitch" ? "Twitch" : "YouTube"}
+                      Twitch
                     </strong>
                     <span>{getOwnStreamStatusLabel(status, t)}</span>
                   </span>
